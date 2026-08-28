@@ -1,30 +1,25 @@
-# Pausekeeper handoff
+# Pausekeeper repair handoff
 
-## Independent verification 2 status — **FAIL**
+## Release status — PASS
 
-Candidate `d47a4fbcd4ca20cd596077fa0fe13a8d24b23a41` was independently reverified on 2026-08-28 against <https://natural-pause-recorder.sociobot.in>. **Do not release this candidate.** The P1 project-import data-loss defect reproduced from fresh evidence on both the clean local production build and the live origin: a valid first item with an existing take ID is committed before a later invalid item rejects the backup, and the UI falsely says existing takes were not changed.
+The release-blocking findings reported for candidate `d47a4fbcd4ca20cd596077fa0fe13a8d24b23a41` in verifier commit `8d027a7b91bbe93daabffd083d1520c420007b31` are repaired. Source repairs are in `783f06d`; expanded release coverage and deployment policy are in `e209c55`.
 
-This is not a deployment-only failure. All **15/15** clean-build production files match the live files byte-for-byte. Full commands, hashes, reproduction details, screenshots/checks, and severity-ranked secondary findings are in `.factory/verification-2.md`; `.factory/verification.md` is retained as the earlier report.
+The repaired static PWA was deployed on 2026-08-28 with factory deployment ID `689b1dc4-c3da-4f92-b230-8d51d3425d63` and verified at <https://natural-pause-recorder.sociobot.in>.
 
-Clean results: `npm ci` passed with 0 vulnerabilities; `npm test` passed 6/6; `npm run build` passed with TypeScript checking and produced `dist/`. The exact `npm run test:e2e` gate failed twice at 4/5 because its synthetic microphone did not reliably produce a restorable pause; the same test passed in isolation and a direct live record/restore/export flow passed. Lighthouse mobile scored 96/100/100/100 (performance/accessibility/best practices/SEO). Axe found zero serious/critical issues, live offline/update flows passed, and bundle budgets passed.
+## Repairs
 
-Release remains blocked until import is fully validated and atomically committed, with a collision regression test. Also make the e2e audio fixture deterministic, fix the 2.19:1 recorder-bay focus ring, and correct production cache/security headers before retest.
+- Project imports now parse and validate the complete version-1 envelope, every take field, both WAV payloads, audio metadata, the full segment timeline, and duplicate IDs before any mutation.
+- All imported takes are written in one IndexedDB read/write transaction. Any request or transaction failure aborts the batch. Existing-ID replacements require a specific confirmation before the transaction starts.
+- The exact data-loss regression seeds `qa-existing`, imports a valid colliding first item followed by an invalid item without `rawWav`, accepts the invalid-file alert, and then reads IndexedDB to prove the original name and single-record count are unchanged.
+- Playwright now feeds Chromium a generated deterministic 48 kHz WAV with a known restorable pause. The formerly flaky record → review → restore test passed in four complete parallel-suite runs, including twice consecutively and once after the final clean install.
+- “Skip to recorder” now targets the focusable recorder workbench. Its regression activates the link and asserts focus moves to `#recorder`.
+- Dark-console controls use a cream 3 px focus outline: measured contrast is **11.93:1** against walnut, up from the reported 2.19:1. Header, brand, and footer links now measure at least 44 CSS px high at desktop and 390 px.
+- `staticwebapp.config.json` adds the restrictive CSP, `Permissions-Policy: microphone=(self), camera=(), geolocation=()`, `X-Frame-Options: DENY`, COOP/CORP, one-year preload HSTS, manifest MIME mapping, and one-year immutable caching for content-hashed JS/CSS.
+- The service-worker cache advanced to `pausekeeper-shell-v4`, and the manifest start URL advanced to `/?v=2`.
 
-## Delivered
+## Clean local verification
 
-- A finished Vite + TypeScript PWA for local, hands-free speech recording.
-- Browser-native mono PCM capture with explicit ready/recording/processing states, live level meter, elapsed timer, permission-denied guidance, and a visible live voice/quiet tape.
-- Configurable protected pause length (0.3–2.5 seconds) and loudness sensitivity. Analysis bridges short word gaps and applies a speech hangover to avoid clipping syllable edges.
-- Non-destructive post-record review: sustained silences are initially shortened only to the chosen minimum, and every eligible pause can be restored or compacted individually before preview/export.
-- Standard 16-bit WAV rendering and free per-take export.
-- IndexedDB persistence of raw and edited audio plus edit decisions; saved-take review, export, and confirmed deletion.
-- User-owned JSON project export/import, including the WAV data, for moving or backing up local projects.
-- Offline PWA shell with versioned cache, cache-first same-origin assets, network-only billing verification, navigation fallback, install icons, and an in-app service-worker update action.
-- `/privacy` and `/terms` routes with the local-storage and merchant-of-record terms explained in plain language.
-- Optional $12 one-time Plus unlock using the Sociobot billing contract: hosted checkout link, returned-token capture and URL cleanup, daily verification cache, optimistic offline access, paste-to-restore, custom preset save, and real batch ZIP export. Free recording, editing, accessibility, WAV export, and project backup are not gated.
-- A product-specific mid-century instrument-panel system and original generated hero artwork, with prompt, review, and provenance in `.factory/design.md`. Shipped image variants are AVIF (51 KB), responsive WebP (33/87 KB), and JPEG fallback (134 KB).
-
-## Run and verify
+Run from the repository root:
 
 ```sh
 npm ci
@@ -33,29 +28,54 @@ npm run build
 npm run test:e2e
 ```
 
-The deployment command is exactly `npm run build`; output is `./dist`, with `dist/index.html` at its root.
+Results on 2026-08-28:
 
-Verified on 2026-08-28:
+- `npm ci`: 58 packages installed; audit reported **0 vulnerabilities**.
+- `npm test`: **9/9** Vitest tests passed across audio and backup parsing.
+- `npm run build`: strict `tsc --noEmit` passed; Vite 7.3.6 produced `dist/`.
+- `npm run test:e2e`: **8/8** Playwright 1.58.2 tests passed. The complete suite then passed twice more consecutively.
+- Browser coverage includes deterministic microphone record → review → pause restore → WAV export → refresh persistence, project export → delete → import round trip, atomic malformed-import rejection, service-worker offline home/privacy navigation, keyboard skip and dialog focus return, desktop/390 px target sizing and overflow, deployment policy, and axe on `/`, `/privacy`, and `/terms`.
+- Axe WCAG 2 A/AA: **0 serious or critical findings** on all three routes.
+- Factory URL verification: title, `lang=en`, one `h1`, `main`, all image alt attributes, labeled buttons, and **0 console/page errors**.
+- Desktop 1366×900 and mobile 390×844 full-page screenshots were visually reviewed; no clipping, overflow, or identity regression was found.
+- Reduced motion: animation duration `0.01ms`, one iteration, and instant scroll behavior.
 
-- `npm test`: 6/6 unit tests passed (pause retention, sustained-silence compaction, pause restoration, WAV encode/decode, ZIP output, formatting).
-- `npm run build`: passed with TypeScript strict checks; Vite 7.3.6 emitted `dist/`.
-- Initial application payload: 22.33 KB JS (9.01 KB gzip), 14.62 KB CSS (4.47 KB gzip), 51 KB AVIF hero; no font payload.
-- `npm run test:e2e`: 4/5 Playwright 1.58.2 tests passed in each of two full-suite runs; the fake-microphone restore test timed out waiting for a restorable pause. It passed when isolated, demonstrating the fixture/gate is nondeterministic.
-- Axe: 0 serious or critical violations.
-- Lighthouse 12.8.2 mobile against the clean production build: Performance 96, Accessibility 100, Best Practices 100, SEO 100. LCP 1.4 s, total blocking time 220 ms, CLS 0.
-- `npm audit`: 0 known production or development dependency vulnerabilities.
-- Visual review completed for desktop and 390 px mobile screenshots; generated hero contains no text, logo, people, or recognizable brand.
+The Azure Static Web Apps emulator confirmed the deployed response configuration before release: hashed JS/CSS received `public, max-age=31536000, immutable`; the manifest received `application/manifest+json`; all security headers were present; the app loaded with no CSP console errors.
+
+## Performance and budgets
+
+Lighthouse 12.8.2 mobile against the local production build scored **100 Performance / 100 Accessibility / 100 Best Practices / 100 SEO**: FCP 1.0 s, LCP 1.4 s, TBT 30 ms, CLS 0, total transfer 92 KiB.
+
+The live origin scored **100 / 100 / 100 / 100**: FCP 1.0 s, LCP 1.3 s, TBT 20 ms, CLS 0, total transfer 92 KiB.
+
+- Initial JS: 25.74 KB raw / 9.96 KB gzip (budget ≤200 KB).
+- CSS: 14.88 KB raw / 4.54 KB gzip (budget ≤50 KB).
+- Fonts: 0 network bytes (budget ≤120 KB).
+- Mobile AVIF hero: 51.26 KB (budget ≤300 KB).
+
+## Live verification
+
+- All **15/15** deployed product artifacts match the local `dist/` byte-for-byte: HTML; hashed JS, source map, and CSS; service worker; manifest; offline page; robots and sitemap; both icons; and all four hero variants.
+- Live HTML returns CSP with `frame-ancestors 'none'`, microphone-scoped Permissions-Policy, `X-Frame-Options: DENY`, COOP/CORP, and `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`.
+- Live hashed JS and CSS return `Cache-Control: public, max-age=31536000, immutable`.
+- Live `/manifest.webmanifest` returns `Content-Type: application/manifest+json`.
+- Fresh live navigation made no third-party requests and emitted no console/page errors. Audio remains local; the only permitted external connection is explicit Sociobot license verification.
+- Live offline reload succeeded for `/` and `/privacy` under a controlling `sw.js`.
+- A byte-distinct v4 → v5 worker simulation displayed “A fresh version is ready,” activated through **Update now**, removed the old cache, reloaded under the new controller, and emitted no errors.
+- Live license-policy smoke test stripped the returned token from the URL, made one routed Sociobot verification request, re-locked a revoked license with the buy link visible, and reused the daily verdict on reload without a second request.
 
 ## Known limits
 
-- Pause detection is intentionally a local loudness threshold, not transcription, noise removal, speaker isolation, or voice identification. No such claim is made in the UI.
-- Capture uses the broadly supported Web Audio `ScriptProcessorNode` compatibility path because it provides direct PCM for deterministic WAV export without a codec dependency. It is deprecated but still available in current evergreen browsers; an AudioWorklet implementation is the natural future replacement.
-- Browser storage quotas vary. Long raw WAV recordings can fill site storage; users are prompted through the interface and documentation to export important work.
-- The billing product is expected to be registered by the factory. The page uses the required slug-based production checkout/verify URLs and contains no hard-coded external product ID or secret.
-- A fake microphone was used for automated capture testing. Before release, do a short manual microphone check on the final HTTPS origin and one iOS Safari install/capture smoke test.
+- Capture still uses browser `ScriptProcessorNode` for broad direct-PCM compatibility; a future AudioWorklet migration would improve long-session architecture but is not a release blocker.
+- Browser storage quotas vary, so important recordings should still be exported as project backups.
+- Automated capture used Chromium’s deterministic fake microphone. Physical-device and iOS Safari install/capture checks require real hardware outside this worker.
+- The factory billing product must be registered and a real test purchase exercised separately; the repository contains no provider secret and uses only the required Sociobot endpoints.
 
-## Suggested next steps
+## Deployment
 
-1. Register the live Plus product/return URL in the Sociobot billing engine and exercise a test purchase before release.
-2. Run the success-measure study with a marked 10-minute narration, comparing retained intentional pauses and editing time against the user’s current workflow.
-3. If long-session users approach storage limits, add an OPFS streaming recorder and AudioWorklet without changing the existing project schema.
+Build output remains `./dist` with `index.html` at its root. Deployment used:
+
+```sh
+npm run build
+/opt/fleet/lib/deploy-static.sh natural-pause-recorder dist
+```
