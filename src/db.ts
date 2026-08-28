@@ -34,6 +34,19 @@ export async function saveTake(take: Take): Promise<void> {
   });
 }
 
+export async function saveTakesAtomically(takes: Take[]): Promise<void> {
+  if (!takes.length) return;
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(STORE, 'readwrite');
+    const store = transaction.objectStore(STORE);
+    for (const take of takes) store.put(take);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('Could not import project data.'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('Project import was rolled back.'));
+  });
+}
+
 export async function deleteTake(id: string): Promise<void> {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {

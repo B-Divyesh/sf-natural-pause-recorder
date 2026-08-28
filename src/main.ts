@@ -1,8 +1,9 @@
 import './styles.css';
 import { analyzePcm, decodeWav, encodeWav, formatTime, makeZip, mergeChunks, renderSegments, rmsDb, safeFilename } from './audio';
-import { deleteTake, listTakes, saveTake } from './db';
+import { parseProjectBackup, takeToPortable } from './backup';
+import { deleteTake, listTakes, saveTake, saveTakesAtomically } from './db';
 import { captureReturnedLicense, isOptimisticallyUnlocked, restoreLicense, verifyStoredLicense } from './license';
-import type { AudioSegment, PortableTake, Take } from './types';
+import type { AudioSegment, Take } from './types';
 
 const byId = <T extends HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -337,9 +338,8 @@ async function startApp(): Promise<void> {
   });
 
   const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); });
-  const dataUrlToBlob = (url: string) => { const [header, body] = url.split(','); const mime = /data:(.*?);/.exec(header ?? '')?.[1] ?? 'audio/wav'; const bytes = Uint8Array.from(atob(body ?? ''), char => char.charCodeAt(0)); return new Blob([bytes], { type: mime }); };
   byId<HTMLButtonElement>('export-data').addEventListener('click', async () => {
-    const portable: PortableTake[] = await Promise.all(takes.map(async take => ({ ...take, rawBlob: undefined, editedBlob: undefined, rawWav: await blobToDataUrl(take.rawBlob), editedWav: await blobToDataUrl(take.editedBlob) } as unknown as PortableTake)));
+    const portable = await Promise.all(takes.map(take => takeToPortable(take, blobToDataUrl)));
     download(new Blob([JSON.stringify({ product: 'Pausekeeper', version: 1, exportedAt: new Date().toISOString(), takes: portable }, null, 2)], { type: 'application/json' }), `pausekeeper-backup-${new Date().toISOString().slice(0, 10)}.json`);
     announce('Project backup exported');
   });
@@ -347,15 +347,15 @@ async function startApp(): Promise<void> {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0]; if (!file) return;
     try {
-      const data = JSON.parse(await file.text()) as { product?: string; version?: number; takes?: PortableTake[] };
-      if (data.product !== 'Pausekeeper' || data.version !== 1 || !Array.isArray(data.takes)) throw new Error('wrong format');
-      for (const item of data.takes) {
-        if (!item.id || !item.rawWav || !item.editedWav || !Array.isArray(item.segments)) throw new Error('missing take data');
-        const take = { ...item, rawBlob: dataUrlToBlob(item.rawWav), editedBlob: dataUrlToBlob(item.editedWav) } as unknown as Take;
-        delete (take as Partial<PortableTake>).rawWav; delete (take as Partial<PortableTake>).editedWav;
-        await saveTake(take);
+      const importedTakes = await parseProjectBackup(await file.text());
+      const existingIds = new Set(takes.map(take => take.id));
+      const collisionCount = importedTakes.filter(take => existingIds.has(take.id)).length;
+      if (collisionCount && !confirm(`This backup contains ${collisionCount} ${collisionCount === 1 ? 'take' : 'takes'} already on this device. Replace ${collisionCount === 1 ? 'it' : 'them'} and import the full backup? No changes will be made if the import cannot finish.`)) {
+        announce('Project import cancelled; existing takes were not changed');
+        return;
       }
-      takes = await listTakes(); renderTakes(); announce(`Imported ${data.takes.length} takes`);
+      await saveTakesAtomically(importedTakes);
+      takes = await listTakes(); renderTakes(); announce(`Imported ${importedTakes.length} takes`);
     } catch {
       alert('That file is not a valid Pausekeeper project backup. Your existing takes were not changed.');
     } finally { input.value = ''; }
