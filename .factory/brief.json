@@ -1,0 +1,9 @@
+{
+  "slug": "natural-pause-recorder",
+  "title": "Pausekeeper",
+  "artifact_class": "pwa-offline",
+  "user": "Solo narrators, game-stream commentators, and language teachers who want hands-free recording without recordings that chop natural speech pauses into awkward fragments.",
+  "smallest_useful_product": "An offline-capable browser recorder with a visible voice/pause timeline, configurable minimum silence, post-record restore of held pauses, and WAV export.",
+  "monetization": "freemium — local recording and WAV export are free; batch exports and reusable project presets are a one-time convenience unlock.",
+  "privacy": "Microphone data remains in-browser by default; no accounts, transcription, or cloud audio upload."
+}
