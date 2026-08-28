@@ -74,7 +74,7 @@ async function startApp(): Promise<void> {
   let levelHistory: number[] = [];
   let startedAt = 0;
   let timerHandle = 0;
-  let currentPcm: Float32Array | null = null;
+  let currentReviewPcm: { takeId: string; samples: Float32Array } | null = null;
   let currentTake: Take | null = null;
   let previewUrl = '';
   let takes: Take[] = [];
@@ -188,19 +188,20 @@ async function startApp(): Promise<void> {
     needle.style.transform = 'rotate(-58deg)';
     recordState.textContent = 'Processing';
     message.textContent = 'Reading the quiet sections on this device…';
-    currentPcm = mergeChunks(chunks);
-    if (currentPcm.length < sampleRate / 3) {
+    const capturedPcm = mergeChunks(chunks);
+    if (capturedPcm.length < sampleRate / 3) {
       recordState.textContent = 'Ready';
       message.textContent = 'That take was too short to save. Record for at least one second.';
       message.classList.add('error');
       return;
     }
-    const segments = analyzePcm(currentPcm, sampleRate, Number(sensitivityInput.value), Number(minInput.value));
-    const rawBlob = encodeWav(currentPcm, sampleRate);
-    const editedBlob = encodeWav(renderSegments(currentPcm, sampleRate, segments), sampleRate);
+    const segments = analyzePcm(capturedPcm, sampleRate, Number(sensitivityInput.value), Number(minInput.value));
+    const rawBlob = encodeWav(capturedPcm, sampleRate);
+    const editedBlob = encodeWav(renderSegments(capturedPcm, sampleRate, segments), sampleRate);
     const now = Date.now();
     const defaultName = `Take ${new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(now)}`;
-    currentTake = { id: crypto.randomUUID(), name: defaultName, createdAt: now, duration: currentPcm.length / sampleRate, editedDuration: durationOf(segments), sampleRate, minSilenceMs: Number(minInput.value), thresholdDb: Number(sensitivityInput.value), segments, rawBlob, editedBlob };
+    currentTake = { id: crypto.randomUUID(), name: defaultName, createdAt: now, duration: capturedPcm.length / sampleRate, editedDuration: durationOf(segments), sampleRate, minSilenceMs: Number(minInput.value), thresholdDb: Number(sensitivityInput.value), segments, rawBlob, editedBlob };
+    currentReviewPcm = { takeId: currentTake.id, samples: capturedPcm };
     await saveTake(currentTake);
     takes = await listTakes();
     renderReview();
@@ -213,9 +214,9 @@ async function startApp(): Promise<void> {
   }
 
   async function refreshEditedTake(): Promise<void> {
-    if (!currentTake || !currentPcm) return;
+    if (!currentTake || currentReviewPcm?.takeId !== currentTake.id) return;
     currentTake.editedDuration = durationOf(currentTake.segments);
-    currentTake.editedBlob = encodeWav(renderSegments(currentPcm, currentTake.sampleRate, currentTake.segments), currentTake.sampleRate);
+    currentTake.editedBlob = encodeWav(renderSegments(currentReviewPcm.samples, currentTake.sampleRate, currentTake.segments), currentTake.sampleRate);
     await saveTake(currentTake);
     takes = takes.map(take => take.id === currentTake?.id ? currentTake : take);
     renderReview();
@@ -287,7 +288,7 @@ async function startApp(): Promise<void> {
       reviewButton.addEventListener('click', async () => {
         currentTake = take;
         const decoded = await decodeWav(take.rawBlob);
-        currentPcm = decoded.pcm;
+        currentReviewPcm = { takeId: take.id, samples: decoded.pcm };
         renderReview();
         review.scrollIntoView({ behavior: 'smooth' });
       });
@@ -298,7 +299,7 @@ async function startApp(): Promise<void> {
         if (!confirm(`Delete “${take.name}” from this device? This cannot be undone unless you exported a project backup.`)) return;
         await deleteTake(take.id);
         takes = takes.filter(item => item.id !== take.id);
-        if (currentTake?.id === take.id) { currentTake = null; currentPcm = null; review.hidden = true; }
+        if (currentTake?.id === take.id) { currentTake = null; currentReviewPcm = null; review.hidden = true; }
         renderTakes(); announce(`${take.name} deleted`);
       });
       actions.append(reviewButton, exportButton, deleteButton);

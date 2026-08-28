@@ -105,6 +105,94 @@ test('records, reviews, restores and exports a take locally', async ({ page, con
   await expect(page.getByRole('heading', { name: /Take / })).toBeVisible();
 });
 
+test('a rejected short capture cannot replace the PCM backing an active review', async ({ page, context }) => {
+  await context.grantPermissions(['microphone'], { origin: 'http://127.0.0.1:4173' });
+  await page.addInitScript(() => {
+    class EmptyAudioContext {
+      readonly sampleRate = 8_000;
+      readonly destination = {};
+      async resume() { /* Test capture is immediately ready. */ }
+      async close() { /* No native audio resources in this deterministic test. */ }
+      createMediaStreamSource() { return { connect() { /* No audio frames are emitted. */ } }; }
+      createScriptProcessor() { return { onaudioprocess: null, connect() { /* No-op. */ }, disconnect() { /* No-op. */ } }; }
+      createGain() { return { gain: { value: 1 }, connect() { /* No-op. */ } }; }
+    }
+    Object.defineProperty(window, 'AudioContext', { configurable: true, value: EmptyAudioContext });
+  });
+  await page.goto('/');
+  await page.evaluate(async () => {
+    const sampleRate = 8_000;
+    const samples = sampleRate * 3;
+    const buffer = new ArrayBuffer(44 + samples * 2);
+    const view = new DataView(buffer);
+    const text = (offset: number, value: string) => { for (let index = 0; index < value.length; index += 1) view.setUint8(offset + index, value.charCodeAt(index)); };
+    text(0, 'RIFF'); view.setUint32(4, 36 + samples * 2, true); text(8, 'WAVE'); text(12, 'fmt ');
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+    text(36, 'data'); view.setUint32(40, samples * 2, true);
+    for (let index = 0; index < samples; index += 1) view.setInt16(44 + index * 2, index < sampleRate * .8 || index >= sampleRate * 2.2 ? -12_000 : 0, true);
+    const rawBlob = new Blob([buffer], { type: 'audio/wav' });
+    const take = {
+      id: 'review-a', name: 'Known three second take', createdAt: Date.now(), duration: 3, editedDuration: 1.9,
+      sampleRate, minSilenceMs: 300, thresholdDb: -42,
+      segments: [
+        { id: '0-6400', type: 'voice', start: 0, end: 6_400, originalDuration: .8, outputDuration: .8, restored: true },
+        { id: '6400-17600', type: 'pause', start: 6_400, end: 17_600, originalDuration: 1.4, outputDuration: .3, restored: false },
+        { id: '17600-24000', type: 'voice', start: 17_600, end: 24_000, originalDuration: .8, outputDuration: .8, restored: true },
+      ],
+      rawBlob,
+      editedBlob: new Blob([buffer.slice(0, 44 + 15_200 * 2)], { type: 'audio/wav' }),
+    };
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('pausekeeper', 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('takes', { keyPath: 'id' });
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction('takes', 'readwrite');
+      transaction.objectStore('takes').put(take);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Review', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Restore 1.4s pause' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Start recording' }).click();
+  await expect(page.getByText('Recording', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Stop & review' }).click();
+  await expect(page.getByText('That take was too short to save. Record for at least one second.')).toBeVisible();
+  await page.getByRole('button', { name: 'Restore 1.4s pause' }).click();
+  await expect(page.getByText('Restored the full 1.4 second pause.')).toBeVisible();
+
+  const stored = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('pausekeeper', 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const take = await new Promise<{ rawBlob: Blob; editedBlob: Blob; duration: number; editedDuration: number }>((resolve, reject) => {
+      const request = database.transaction('takes').objectStore('takes').get('review-a');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const raw = new Uint8Array(await take.rawBlob.arrayBuffer());
+    const edited = new Uint8Array(await take.editedBlob.arrayBuffer());
+    return {
+      rawBytes: raw.byteLength,
+      editedBytes: edited.byteLength,
+      identical: raw.byteLength === edited.byteLength && raw.every((byte, index) => byte === edited[index]),
+      duration: take.duration,
+      editedDuration: take.editedDuration,
+    };
+  });
+  expect(stored).toEqual({ rawBytes: 48_044, editedBytes: 48_044, identical: true, duration: 3, editedDuration: 3 });
+  await page.reload();
+  await expect(page.getByText('00:03 edited')).toBeVisible();
+});
+
 test('a rejected later import item cannot overwrite an earlier colliding take', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(async () => {
@@ -204,6 +292,14 @@ test('deployment policy declares security, immutable assets, and manifest MIME',
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
   expect(config.globalHeaders['Strict-Transport-Security']).toContain('max-age=31536000');
   expect(config.mimeTypes['.webmanifest']).toBe('application/manifest+json');
+});
+
+test('Plus purchase uses the registered Sociobot checkout contract', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Buy Plus — $12 once' })).toHaveAttribute(
+    'href',
+    'https://api.sociobot.in/api/v1/products/natural-pause-recorder/checkout',
+  );
 });
 
 test('home and legal pages have no serious or critical automated accessibility violations', async ({ page }) => {

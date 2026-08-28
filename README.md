@@ -35,11 +35,12 @@ Open the printed local URL. Microphone capture requires `localhost` or HTTPS.
 npm test
 npm run build
 npm run test:e2e
+npm run test:live
 ```
 
 `npm run build` is the reproducible deployment command. It writes the static site to `./dist`, with `dist/index.html` at the deploy root. Playwright 1.58.2 is pinned; its Chromium browser must be installed or available through `PLAYWRIGHT_BROWSERS_PATH`.
 
-The browser suite uses a generated deterministic microphone WAV and checks semantic structure, skip navigation, dialog focus, focus contrast, 44 px link targets, 390 px overflow, record/review/restore/export persistence, project round trips, malformed-import rollback, axe WCAG A/AA findings on all routes, and explicit offline navigation.
+The browser suite uses a generated deterministic microphone WAV and checks semantic structure, skip navigation, dialog focus, focus contrast, 44 px link targets, 390 px overflow, record/review/restore/export persistence, rejected-capture isolation, project round trips, malformed-import rollback, axe WCAG A/AA findings on all routes, and explicit offline navigation. Run `npm run test:live` after deployment to prove artifact identity, response policy, immutable caching, manifest MIME, hosted checkout availability, and license-verification policy.
 
 ## Privacy and storage
 
