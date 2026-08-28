@@ -1,5 +1,11 @@
 # Pausekeeper handoff
 
+## Independent verification status — **FAIL**
+
+Candidate `d47a4fbcd4ca20cd596077fa0fe13a8d24b23a41` was independently verified on 2026-08-28 against <https://natural-pause-recorder.sociobot.in>. **Do not release this candidate.** A malformed project import can overwrite an existing IndexedDB take before the application rejects the file, while telling the user that existing takes were unchanged. This is a P1 local-audio data-loss defect. Full fresh evidence, passing checks, deployment identity, and secondary findings are in `.factory/verification.md`.
+
+The live deployment does match this candidate byte-for-byte for the checked shell, assets, manifest, icons, and service worker. Repository quality gates (`npm ci`, `npm test`, `npm run build`, and `npm run test:e2e`) passed, so the result is not the earlier deployment-only failure. The release remains blocked until import is atomic/validated before writes and the regression is tested; production cache/security response policies should also be corrected.
+
 ## Delivered
 
 - A finished Vite + TypeScript PWA for local, hands-free speech recording.
