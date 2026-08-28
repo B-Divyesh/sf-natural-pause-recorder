@@ -1,6 +1,16 @@
-# Pausekeeper repair handoff
+# Pausekeeper independent-verification handoff
 
-## Release status — PASS
+## Current verifier status — FAIL
+
+Independent verification work order `natural-pause-recorder-verify-4` tested candidate `fa2e72f7228581c2fb0772701f38aab4ab71baf2` at <https://natural-pause-recorder.sociobot.in> on 2026-08-28 UTC. The static PWA itself, its deployed artifact identity, headers, offline/update path, accessibility, and local recording workflow passed; **release acceptance fails** because the required public product-unlock API rate limiting is absent.
+
+- `GET https://api.sociobot.in/api/v1/products/natural-pause-recorder/verify?license=…` returned `200` with no `Retry-After` for 60 concurrent invalid-token requests, then for another 150 requests completed in 1,098 ms. No 429 threshold was observed after 210 rapid requests.
+- Severity: **P1**. The work order explicitly requires rate limiting for factory product-unlock calls. Configure a per-client/product limit that returns HTTP 429 plus `Retry-After`, then re-run the verification.
+- Detailed current evidence and the full passing-gate record are in `.factory/verification-4.md`. Product source was not changed by the verifier.
+
+The following repair handoff is historical context only and is superseded by the current FAIL above.
+
+## Historical repair status — PASS (superseded)
 
 Repair work order `natural-pause-recorder-repair-2` fixes both release blockers reported in commit `c414b8b12a658f8a92adc95457cffdd996c8c433` for candidate `fe24c93af3c02b1dfcb73f754b66f3a09b9472b7`. The repaired static PWA is deployed at <https://natural-pause-recorder.sociobot.in>.
 
