@@ -35,7 +35,9 @@ Open the printed local URL. Microphone capture requires `localhost` or HTTPS.
 npm test
 npm run build
 npm run test:e2e
+npm run test:pwa:update
 npm run test:live
+npm run test:live:browser
 ```
 
 `npm run build` is the reproducible deployment command. It writes the static site to `./dist`, with `dist/index.html` at the deploy root. Playwright 1.58.2 is pinned; its Chromium browser must be installed or available through `PLAYWRIGHT_BROWSERS_PATH`.

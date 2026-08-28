@@ -302,6 +302,26 @@ test('Plus purchase uses the registered Sociobot checkout contract', async ({ pa
   );
 });
 
+test('returned, restored, cached, and revoked licenses follow the Plus policy', async ({ page }) => {
+  let verificationRequests = 0;
+  await page.route('https://api.sociobot.in/api/v1/products/natural-pause-recorder/verify?license=qa-revoked-token', async route => {
+    verificationRequests += 1;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ valid: false, reason: 'revoked', expires_at: null }) });
+  });
+  await page.goto('/?license=qa-revoked-token');
+  await expect(page).not.toHaveURL(/license=/);
+  await expect(page.locator('#license-state')).toContainText('License no longer active (revoked)');
+  await expect(page.getByRole('link', { name: 'Buy Plus — $12 once' })).toBeVisible();
+  expect(verificationRequests).toBe(1);
+  expect(await page.evaluate(() => localStorage.getItem('sb_license:natural-pause-recorder'))).toBe('qa-revoked-token');
+  await page.reload();
+  expect(verificationRequests).toBe(1);
+
+  await page.getByRole('button', { name: 'Have a license? Restore it' }).click();
+  await page.getByRole('button', { name: 'Verify license' }).click();
+  await expect(page.locator('#license-message')).toHaveText('Paste a license token first.');
+});
+
 test('home and legal pages have no serious or critical automated accessibility violations', async ({ page }) => {
   for (const path of ['/', '/privacy', '/terms']) {
     await page.goto(path);

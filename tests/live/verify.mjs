@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
-import { readFile } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { readdir, readFile } from 'node:fs/promises';
+import { join, relative } from 'node:path';
 
 const origin = process.env.PAUSEKEEPER_URL ?? 'https://natural-pause-recorder.sociobot.in';
 
@@ -17,10 +17,21 @@ const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g
 assert.equal(assets.length, 2, 'live HTML must reference one JS and one CSS asset');
 for (const asset of assets) {
   const response = await fetch(`${origin}${asset}`);
-  assert.equal(response.status, 200, `${asset} must return HTTP 200`);
   assert.match(response.headers.get('cache-control') ?? '', /max-age=31536000/);
   assert.match(response.headers.get('cache-control') ?? '', /immutable/);
-  const local = await readFile(join('dist', 'assets', basename(asset)));
+}
+
+async function filesBelow(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  return (await Promise.all(entries.map(entry => entry.isDirectory() ? filesBelow(join(directory, entry.name)) : [join(directory, entry.name)]))).flat();
+}
+const deployableFiles = (await filesBelow('dist')).filter(path => !path.endsWith('staticwebapp.config.json'));
+assert.equal(deployableFiles.length, 15, 'production build must contain the expected 15 public files');
+for (const file of deployableFiles) {
+  const asset = `/${relative('dist', file)}`;
+  const response = await fetch(`${origin}${asset}`);
+  assert.equal(response.status, 200, `${asset} must return HTTP 200`);
+  const local = await readFile(file);
   const live = Buffer.from(await response.arrayBuffer());
   assert.deepEqual(live, local, `${asset} must match the local production build byte-for-byte`);
 }
