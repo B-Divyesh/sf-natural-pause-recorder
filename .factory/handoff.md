@@ -33,7 +33,7 @@ Results on 2026-08-28:
 - `npm ci`: 58 packages installed; audit reported **0 vulnerabilities**.
 - `npm test`: **9/9** Vitest tests passed across audio and backup parsing.
 - `npm run build`: strict `tsc --noEmit` passed; Vite 7.3.6 produced `dist/`.
-- `npm run test:e2e`: **8/8** Playwright 1.58.2 tests passed. The complete suite then passed twice more consecutively.
+- `npm run test:e2e`: **8/8** Playwright 1.58.2 tests passed after the final clean install; three earlier complete repair runs also passed, including two consecutively.
 - Browser coverage includes deterministic microphone record → review → pause restore → WAV export → refresh persistence, project export → delete → import round trip, atomic malformed-import rejection, service-worker offline home/privacy navigation, keyboard skip and dialog focus return, desktop/390 px target sizing and overflow, deployment policy, and axe on `/`, `/privacy`, and `/terms`.
 - Axe WCAG 2 A/AA: **0 serious or critical findings** on all three routes.
 - Factory URL verification: title, `lang=en`, one `h1`, `main`, all image alt attributes, labeled buttons, and **0 console/page errors**.
