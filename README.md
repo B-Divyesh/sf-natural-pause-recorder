@@ -12,6 +12,7 @@ Live product: <https://natural-pause-recorder.sociobot.in>
 - Restores individual pauses non-destructively and previews the edited WAV.
 - Persists raw and edited takes in IndexedDB across refreshes.
 - Exports individual WAVs and a portable JSON project backup for free.
+- Validates an entire project backup before one atomic IndexedDB import; ID collisions require explicit replacement confirmation.
 - Installs as a PWA and keeps the app shell available offline.
 - Offers an optional one-time Plus license for custom presets and batch ZIP export through the Sociobot billing API.
 
@@ -38,7 +39,7 @@ npm run test:e2e
 
 `npm run build` is the reproducible deployment command. It writes the static site to `./dist`, with `dist/index.html` at the deploy root. Playwright 1.58.2 is pinned; its Chromium browser must be installed or available through `PLAYWRIGHT_BROWSERS_PATH`.
 
-The browser suite checks semantic structure, keyboard entry, 390 px overflow, IndexedDB recording persistence with a fake microphone, axe WCAG A/AA serious/critical findings, and explicit offline navigation.
+The browser suite uses a generated deterministic microphone WAV and checks semantic structure, skip navigation, dialog focus, focus contrast, 44 px link targets, 390 px overflow, record/review/restore/export persistence, project round trips, malformed-import rollback, axe WCAG A/AA findings on all routes, and explicit offline navigation.
 
 ## Privacy and storage
 
@@ -51,6 +52,8 @@ Pausekeeper targets current evergreen browsers with `getUserMedia`, Web Audio, I
 ## Deployment
 
 Deploy the contents of `dist/` as a static site with SPA navigation falling back to `index.html` for `/privacy` and `/terms`. The factory owns DNS, infrastructure, and release-time billing registration; this repository does not contain product IDs or secrets.
+
+`public/staticwebapp.config.json` carries the Azure Static Web Apps response policy: restrictive microphone-aware CSP and Permissions-Policy, frame/origin isolation, one-year HSTS, the manifest MIME override, and immutable caching for Vite's content-hashed JS/CSS.
 
 ## License
 

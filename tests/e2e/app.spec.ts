@@ -13,6 +13,11 @@ test('has a clear, keyboard-reachable recorder', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Skip to recorder' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('#recorder')).toBeFocused();
+  const restoreLicense = page.getByRole('button', { name: 'Have a license? Restore it' });
+  await restoreLicense.click();
+  await expect(page.getByRole('button', { name: 'Close license dialog' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(restoreLicense).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -86,6 +91,17 @@ test('records, reviews, restores and exports a take locally', async ({ page, con
   await page.getByRole('button', { name: 'Export WAV' }).first().click();
   await expect((await download).suggestedFilename()).toMatch(/\.wav$/);
   await page.reload();
+  await expect(page.getByRole('heading', { name: /Take / })).toBeVisible();
+
+  const backupDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export project data' }).click();
+  const backup = await backupDownload;
+  const backupPath = await backup.path();
+  expect(backupPath).not.toBeNull();
+  page.once('dialog', dialog => void dialog.accept());
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByRole('heading', { name: 'No saved takes yet' })).toBeVisible();
+  await page.locator('#import-data').setInputFiles(backupPath as string);
   await expect(page.getByRole('heading', { name: /Take / })).toBeVisible();
 });
 
@@ -182,7 +198,7 @@ test('deployment policy declares security, immutable assets, and manifest MIME',
     globalHeaders: Record<string, string>;
     mimeTypes: Record<string, string>;
   };
-  expect(config.routes).toContainEqual(expect.objectContaining({ route: '/assets/index-*', headers: expect.objectContaining({ 'Cache-Control': expect.stringContaining('immutable') }) }));
+  expect(config.routes).toContainEqual(expect.objectContaining({ route: '/assets/*.{js,css}', headers: expect.objectContaining({ 'Cache-Control': expect.stringContaining('immutable') }) }));
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(config.globalHeaders['Permissions-Policy']).toContain('microphone=(self)');
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
@@ -190,8 +206,12 @@ test('deployment policy declares security, immutable assets, and manifest MIME',
   expect(config.mimeTypes['.webmanifest']).toBe('application/manifest+json');
 });
 
-test('has no serious or critical automated accessibility violations', async ({ page }) => {
-  await page.goto('/');
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  expect(results.violations.filter(violation => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
+test('home and legal pages have no serious or critical automated accessibility violations', async ({ page }) => {
+  for (const path of ['/', '/privacy', '/terms']) {
+    await page.goto(path);
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(page.locator('main')).toHaveCount(1);
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+    expect(results.violations.filter(violation => ['serious', 'critical'].includes(violation.impact ?? '')), path).toEqual([]);
+  }
 });

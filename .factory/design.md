@@ -19,6 +19,7 @@ The product is intentionally single-mode. The painted oatmeal chassis and dark w
 - `mint #2C7058`: voice/success state.
 - `ochre #A66A17`: held-pause/warning state.
 - `danger #A72E2A`: errors.
+- Focus: teal `#176F8A` on light enamel and cream `#FFF9EA` on the walnut console, keeping the 3 px keyboard indicator above 3:1 on either surface.
 
 ## Typography
 
