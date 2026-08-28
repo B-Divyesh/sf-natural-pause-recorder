@@ -31,7 +31,11 @@
           <a class="button primary hero-cta" href="#recorder">Open the recorder <span aria-hidden="true">↓</span></a>
         </div>
         <figure class="hero-visual">
-          <img src="/assets/hero-recorder.webp" width="1200" height="800" fetchpriority="high" decoding="async" alt="A fictional cream and walnut reel-to-reel recorder carrying a continuous green waveform tape" />
+          <picture>
+            <source srcset="/assets/hero-recorder.avif" type="image/avif" />
+            <source srcset="/assets/hero-recorder-720.webp 720w, /assets/hero-recorder.webp 1200w" sizes="(max-width: 850px) calc(100vw - 2rem), 52vw" type="image/webp" />
+            <img src="/assets/hero-recorder.jpg" width="1200" height="800" fetchpriority="high" decoding="async" alt="A fictional cream and walnut reel-to-reel recorder carrying a continuous green waveform tape" />
+          </picture>
           <figcaption>Continuous capture. Deliberate edits.</figcaption>
         </figure>
       </section>

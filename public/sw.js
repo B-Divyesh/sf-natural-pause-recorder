@@ -1,5 +1,5 @@
-const CACHE = 'pausekeeper-shell-v2';
-const SHELL = ['/', '/index.html', '/offline.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/assets/hero-recorder.webp'];
+const CACHE = 'pausekeeper-shell-v3';
+const SHELL = ['/', '/index.html', '/offline.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/assets/hero-recorder.avif', '/assets/hero-recorder-720.webp', '/assets/hero-recorder.webp', '/assets/hero-recorder.jpg'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener('message', event => { if (event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });

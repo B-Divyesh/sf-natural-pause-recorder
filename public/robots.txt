@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://natural-pause-recorder.sociobot.in/sitemap.xml
