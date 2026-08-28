@@ -1,10 +1,14 @@
 # Pausekeeper handoff
 
-## Independent verification status — **FAIL**
+## Independent verification 2 status — **FAIL**
 
-Candidate `d47a4fbcd4ca20cd596077fa0fe13a8d24b23a41` was independently verified on 2026-08-28 against <https://natural-pause-recorder.sociobot.in>. **Do not release this candidate.** A malformed project import can overwrite an existing IndexedDB take before the application rejects the file, while telling the user that existing takes were unchanged. This is a P1 local-audio data-loss defect. Full fresh evidence, passing checks, deployment identity, and secondary findings are in `.factory/verification.md`.
+Candidate `d47a4fbcd4ca20cd596077fa0fe13a8d24b23a41` was independently reverified on 2026-08-28 against <https://natural-pause-recorder.sociobot.in>. **Do not release this candidate.** The P1 project-import data-loss defect reproduced from fresh evidence on both the clean local production build and the live origin: a valid first item with an existing take ID is committed before a later invalid item rejects the backup, and the UI falsely says existing takes were not changed.
 
-The live deployment does match this candidate byte-for-byte for the checked shell, assets, manifest, icons, and service worker. Repository quality gates (`npm ci`, `npm test`, `npm run build`, and `npm run test:e2e`) passed, so the result is not the earlier deployment-only failure. The release remains blocked until import is atomic/validated before writes and the regression is tested; production cache/security response policies should also be corrected.
+This is not a deployment-only failure. All **15/15** clean-build production files match the live files byte-for-byte. Full commands, hashes, reproduction details, screenshots/checks, and severity-ranked secondary findings are in `.factory/verification-2.md`; `.factory/verification.md` is retained as the earlier report.
+
+Clean results: `npm ci` passed with 0 vulnerabilities; `npm test` passed 6/6; `npm run build` passed with TypeScript checking and produced `dist/`. The exact `npm run test:e2e` gate failed twice at 4/5 because its synthetic microphone did not reliably produce a restorable pause; the same test passed in isolation and a direct live record/restore/export flow passed. Lighthouse mobile scored 96/100/100/100 (performance/accessibility/best practices/SEO). Axe found zero serious/critical issues, live offline/update flows passed, and bundle budgets passed.
+
+Release remains blocked until import is fully validated and atomically committed, with a collision regression test. Also make the e2e audio fixture deterministic, fix the 2.19:1 recorder-bay focus ring, and correct production cache/security headers before retest.
 
 ## Delivered
 
@@ -23,7 +27,7 @@ The live deployment does match this candidate byte-for-byte for the checked shel
 ## Run and verify
 
 ```sh
-npm install
+npm ci
 npm test
 npm run build
 npm run test:e2e
@@ -36,9 +40,9 @@ Verified on 2026-08-28:
 - `npm test`: 6/6 unit tests passed (pause retention, sustained-silence compaction, pause restoration, WAV encode/decode, ZIP output, formatting).
 - `npm run build`: passed with TypeScript strict checks; Vite 7.3.6 emitted `dist/`.
 - Initial application payload: 22.33 KB JS (9.01 KB gzip), 14.62 KB CSS (4.47 KB gzip), 51 KB AVIF hero; no font payload.
-- `npm run test:e2e`: 5/5 Playwright 1.58.2 tests passed in Chromium: title/landmarks/keyboard entry and clean console, explicit service-worker offline reload plus offline `/privacy`, 390×844 layout/no overflow, fake-microphone record → pause restore → WAV download → refresh persistence, and axe WCAG A/AA scan.
+- `npm run test:e2e`: 4/5 Playwright 1.58.2 tests passed in each of two full-suite runs; the fake-microphone restore test timed out waiting for a restorable pause. It passed when isolated, demonstrating the fixture/gate is nondeterministic.
 - Axe: 0 serious or critical violations.
-- Lighthouse 12.8.2 mobile against the production build: Performance 100, Accessibility 100, Best Practices 100, SEO 100. LCP 1.2 s, total blocking time 0 ms, CLS 0.
+- Lighthouse 12.8.2 mobile against the clean production build: Performance 96, Accessibility 100, Best Practices 100, SEO 100. LCP 1.4 s, total blocking time 220 ms, CLS 0.
 - `npm audit`: 0 known production or development dependency vulnerabilities.
 - Visual review completed for desktop and 390 px mobile screenshots; generated hero contains no text, logo, people, or recognizable brand.
 
