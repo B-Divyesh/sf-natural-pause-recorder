@@ -1,45 +1,26 @@
-# Pausekeeper independent-verification handoff
+# Pausekeeper handoff
 
-## Current verifier status — PASS
+## Current status — FAIL review 1
 
-Independent verification work order `natural-pause-recorder-verify-5` tested candidate `fa2e72f7228581c2fb0772701f38aab4ab71baf2` at <https://natural-pause-recorder.sociobot.in> on 2026-08-28 UTC from a clean detached checkout. **The candidate passes the acceptance contract.** Product source was not modified.
+Review work order `natural-pause-recorder-review-1` audited implementation candidate `fa2e72f7228581c2fb0772701f38aab4ab71baf2` at <https://natural-pause-recorder.sociobot.in> on 2026-09-05 UTC. The current documentation SHA is `99c8d844d2903dc38e7db099eed1564e0b5a8905`; its later commits are report-only, so the candidate is unchanged.
 
-The deployment-only blocker from verification 4 is resolved: after a 4.5-second reset, the public Sociobot license verification endpoint accepted five ordered rapid requests, then returned the first `429 Too Many Requests` on request 6 with `Retry-After: 3`. A separate 60-way burst produced 41 HTTP 429 responses, all with the same Retry-After value.
+**Do not claim product acceptance.** The review found 5 findings and 14 untested public-claim categories. The full report is [`.factory/review-1.md`](./review-1.md).
 
-Full current evidence is in `.factory/verification-5.md`. No product defects were found.
+## What was verified
 
-## Passing evidence
+- Clean `npm ci` passed with 0 vulnerabilities.
+- `npm test` passed 9/9; `npm run build` passed and wrote `dist/`.
+- `npm run test:e2e` passed 11/11; PWA update, live identity/policy, and live browser suites passed.
+- Live files match the candidate build byte-for-byte. Normal recorder, recovery, pause boundary, accessibility, keyboard, mobile, privacy, offline/update, legal-page, checkout, and rate-limit checks passed.
+- The optional license endpoint returned 36 HTTP 429 responses with `Retry-After: 4` during a 60-request burst.
 
-- Clean `npm ci`: 58 packages, 0 vulnerabilities.
-- `npm test`: 9/9 passed.
-- Exact `npm run build`: strict TypeScript and Vite production build passed; `dist/` produced. No separate lint script exists.
-- `CI=1 npm run test:e2e -- --workers=1`: 11/11 passed.
-- PWA update, live artifact/policy, and live browser suites all passed.
-- Live record → review → pause restore → valid WAV export → reload persistence passed with a deterministic fake microphone and no browser errors or non-product network hosts.
-- Invalid import rollback, rejected-capture isolation, permission denial/retry, boundary settings, empty/license recovery, project backup round trip, and free-tier behavior passed.
-- Live desktop and 390 px mobile passed visual/overflow/touch-target review. Keyboard navigation, visible focus, reduced motion, and axe scans on all routes passed with 0 serious/critical findings.
-- Live offline reload passed for `/` and `/privacy`; deterministic service-worker update activation/reload/old-cache cleanup passed.
-- All 15 public files match the candidate build byte-for-byte. Headers, CORS, short HTML/SW caching, immutable hashed assets, manifest MIME, and privacy/outbound-request policy passed.
-- Budgets: JS 25,826 B raw / 9,993 B gzip; CSS 14,877 B raw / 4,527 B gzip; fonts 0 B; AVIF hero 51,257 B.
-- Lighthouse 13.4.1 mobile: **100/100/100/100**; FCP 1.308 s, LCP 1.330 s, TBT 67.5 ms, CLS 0, transfer 94,123 B.
-- Hosted checkout returned HTTP 303 to Dodo. The license API returned the documented invalid-token response and enforced a fresh observed threshold of five accepted requests, then 429 with `Retry-After: 3`.
+## Required follow-up
 
-## Re-run
+1. Add the isolated one-click sample-data demo, persistent banner, reset/start-real controls, and `.factory/demo.md`.
+2. Add `.factory/claims.json` and one tagged, observable demo test per retained public claim.
+3. Rewrite first-screen/title copy in plain words; add the standard landing sections/footer metadata and a real 404 page.
+4. Repeat the complete command set and live audit after deployment.
 
-```sh
-npm ci
-npm test
-npm run build
-CI=1 npm run test:e2e -- --workers=1
-npm run test:pwa:update
-npm run test:live
-npm run test:live:browser
-```
+## Known limits
 
-## Known verification limits
-
-- Recording used Playwright's deterministic fake microphone rather than physical hardware.
-- No real production payment/refund was performed; doing so would create a financial transaction.
-- This is a static PWA with no sign-in or product backend, so library/CLI consumer, server concurrency/persistence/health, and Entra authority checks are not applicable.
-
-Evidence artifacts are under `/work/.evidence/pausekeeper-verify-5` in the disposable verifier container.
+Recording used Playwright’s deterministic fake microphone. No paid purchase/refund was made. This is a static PWA with no product backend, tenant state, health endpoint, CLI/library artifact, or server restart persistence to check.
