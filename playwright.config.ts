@@ -4,7 +4,11 @@ const fakeMicrophone = new URL('./test-results/fake-microphone.wav', import.meta
 
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: true,
+  // Audio capture and service-worker ownership are browser-global enough that
+  // a single worker is the stable release gate. Individual claim tests still
+  // use fresh browser contexts.
+  fullyParallel: false,
+  workers: 1,
   globalSetup: './tests/e2e/global-setup.mjs',
   use: {
     baseURL: 'http://127.0.0.1:4173',

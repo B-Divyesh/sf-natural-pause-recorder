@@ -1,0 +1,107 @@
+[
+  {
+    "id": "demo-sandbox",
+    "claim": "Try a populated sample without changing real takes",
+    "where": "Landing action and demo banner",
+    "test": "npm run test:claims -- --grep @claim:demo-sandbox",
+    "sandbox": "Seed a real take, open /demo, reset edited sample data, and verify the real take is unchanged"
+  },
+  {
+    "id": "record-locally",
+    "claim": "Record speech in the browser",
+    "where": "Landing headline, recorder controls, README",
+    "test": "npm run test:claims -- --grep @claim:record-locally",
+    "sandbox": "Use the deterministic microphone from /demo and verify the new take is stored in the demo list"
+  },
+  {
+    "id": "privacy-local",
+    "claim": "Audio stays in this browser",
+    "where": "Landing facts, privacy section, README",
+    "test": "npm run test:claims -- --grep @claim:privacy-local",
+    "sandbox": "Record all requests while restoring a sample pause; only the product origin is allowed"
+  },
+  {
+    "id": "pause-range",
+    "claim": "Set pause protection from 0.3 to 2.5 seconds",
+    "where": "How it works, recorder settings, README",
+    "test": "npm run test:claims -- --grep @claim:pause-range",
+    "sandbox": "Set both endpoints in /demo and observe the displayed protection value"
+  },
+  {
+    "id": "long-pause-only",
+    "claim": "Compacts only pauses longer than the selected minimum",
+    "where": "Recorder description, README",
+    "test": "npm run test:claims -- --grep @claim:long-pause-only",
+    "sandbox": "Use the sample timeline, which has a held short pause and a separate restore control for long pauses"
+  },
+  {
+    "id": "pause-restoration",
+    "claim": "Restore a full pause before export",
+    "where": "How it works, review controls, README",
+    "test": "npm run test:claims -- --grep @claim:pause-restoration",
+    "sandbox": "Restore a compacted sample pause and observe the status and Compact control"
+  },
+  {
+    "id": "pause-timeline",
+    "claim": "Show voice and pause sections after recording",
+    "where": "How it works, review timeline, README",
+    "test": "npm run test:claims -- --grep @claim:pause-timeline",
+    "sandbox": "Inspect the populated sample timeline for its separately rendered voice and pause sections"
+  },
+  {
+    "id": "take-persistence",
+    "claim": "Keep saved takes after refresh",
+    "where": "Saved takes section, README",
+    "test": "npm run test:claims -- --grep @claim:take-persistence",
+    "sandbox": "Rename the sample take in /demo, reload, and observe the saved name"
+  },
+  {
+    "id": "wav-export",
+    "claim": "Export a WAV for free",
+    "where": "Landing facts, review controls, Plus section, README",
+    "test": "npm run test:claims -- --grep @claim:wav-export",
+    "sandbox": "Download the sample WAV and validate its RIFF/WAVE header"
+  },
+  {
+    "id": "project-backup",
+    "claim": "Export portable project data",
+    "where": "Saved takes section, privacy page, README",
+    "test": "npm run test:claims -- --grep @claim:project-backup",
+    "sandbox": "Download the sample project backup and validate its product envelope and embedded WAV"
+  },
+  {
+    "id": "atomic-import",
+    "claim": "Reject an invalid project backup without changing existing takes",
+    "where": "Import confirmation and README",
+    "test": "npm run test:claims -- --grep @claim:atomic-import",
+    "sandbox": "Import a later-invalid backup that collides with the sample, then reload and verify the sample remains"
+  },
+  {
+    "id": "offline-reload",
+    "claim": "Works offline after the first visit",
+    "where": "Landing facts, README",
+    "test": "npm run test:claims -- --grep @claim:offline-reload",
+    "sandbox": "Use a new browser context, load /demo once, set it offline, reload, and inspect the populated demo"
+  },
+  {
+    "id": "plus-convenience",
+    "claim": "Plus is a one-time $12 convenience unlock; core WAV export stays free",
+    "where": "Plus section, terms, README",
+    "test": "npm run test:claims -- --grep @claim:plus-convenience",
+    "sandbox": "Attempt batch export in /demo, then complete an individual sample WAV download without Plus"
+  },
+  {
+    "id": "daily-license-check",
+    "claim": "A Plus license is checked at most once per day",
+    "where": "Privacy page",
+    "test": "npm run test:claims -- --grep @claim:daily-license-check",
+    "sandbox": "Use a mocked valid demo license, reload, and count one verification request"
+  },
+  {
+    "id": "no-speech-profiling",
+    "claim": "Pausekeeper does not create transcripts, identify people, or send sample audio away",
+    "where": "Privacy and limits section, terms, README",
+    "test": "npm run test:claims -- --grep @claim:no-speech-profiling",
+    "sandbox": "Restore a sample pause, verify no transcript interface appears, and allow only same-origin requests"
+  }
+]

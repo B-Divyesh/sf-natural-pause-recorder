@@ -1,7 +1,8 @@
 import './styles.css';
 import { analyzePcm, decodeWav, encodeWav, formatTime, makeZip, mergeChunks, renderSegments, rmsDb, safeFilename } from './audio';
 import { parseProjectBackup, takeToPortable } from './backup';
-import { deleteTake, listTakes, saveTake, saveTakesAtomically } from './db';
+import { clearTakes, deleteTake, listTakes, saveTake, saveTakesAtomically, type StorageScope } from './db';
+import { createDemoTake } from './demo';
 import { captureReturnedLicense, isOptimisticallyUnlocked, restoreLicense, verifyStoredLicense } from './license';
 import type { AudioSegment, Take } from './types';
 
@@ -14,11 +15,11 @@ const byId = <T extends HTMLElement>(id: string): T => {
 function renderLegalPage(kind: 'privacy' | 'terms'): boolean {
   if (location.pathname !== `/${kind}` && location.pathname !== `/${kind}/`) return false;
   const title = kind === 'privacy' ? 'Privacy' : 'Terms';
-  document.title = `${title} — Pausekeeper`;
+  setRouteMetadata(`${title} — Pausekeeper`, kind === 'privacy' ? 'Learn how Pausekeeper stores recordings and handles optional purchases.' : 'Read the terms for using Pausekeeper and its optional Plus purchase.', `/${kind}`);
   const main = byId<HTMLElement>('main');
   main.className = 'legal-page';
   main.innerHTML = kind === 'privacy' ? `
-    <p class="eyebrow">Last updated August 28, 2026</p><h1>Privacy, in plain language</h1>
+    <p class="eyebrow">Last updated September 5, 2026</p><h1>Privacy for your recordings</h1>
     <p>Pausekeeper is designed so your microphone audio stays on your device. We do not run analytics, create advertising profiles, or operate an audio cloud.</p>
     <h2>What is stored</h2><p>Your recordings, pause edits, names, and preferences are stored in your browser using IndexedDB and local storage. They remain until you delete them, clear site data, or import a replacement backup.</p>
     <h2>Microphone access</h2><p>The browser asks permission only when you press “Start recording.” Audio is processed locally with browser audio APIs. Pausekeeper does not transcribe, identify speakers, or upload microphone data.</p>
@@ -32,15 +33,47 @@ function renderLegalPage(kind: 'privacy' | 'terms'): boolean {
     <h2>Plus purchase</h2><p>Plus is a one-time $12 purchase that unlocks custom presets and batch ZIP export. Core recording, individual WAV export, project backup, privacy, and accessibility remain free. Sociobot/Dodo is the merchant of record and handles checkout and refunds. A refund revokes the associated license.</p>
     <h2>Availability and warranty</h2><p>The software is provided “as is.” Keep independent backups of important recordings; browser storage may be cleared by device or browser policies.</p>
     <h2>Acceptable use</h2><p>Do not use Pausekeeper to record people unlawfully or to infringe others’ rights. <a href="/">Return to Pausekeeper</a>.</p>`;
-  document.querySelector('.site-header nav')?.setAttribute('hidden', '');
   return true;
 }
 
-const legalPath = location.pathname.startsWith('/terms') ? 'terms' : 'privacy';
-if (location.pathname.startsWith('/privacy') || location.pathname.startsWith('/terms')) renderLegalPage(legalPath);
-else void startApp();
+function setRouteMetadata(title: string, description: string, path: string): void {
+  document.title = title;
+  document.querySelector('meta[name="description"]')?.setAttribute('content', description);
+  const canonical = `https://natural-pause-recorder.sociobot.in${path}`;
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', canonical);
+  document.querySelector('meta[property="og:title"]')?.setAttribute('content', title);
+  document.querySelector('meta[property="og:description"]')?.setAttribute('content', description);
+  document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', title);
+  document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', description);
+}
 
-async function startApp(): Promise<void> {
+function renderNotFoundPage(): void {
+  setRouteMetadata('Not found — Pausekeeper', 'This Pausekeeper page does not exist. Return to the recorder or open the sample.', '/404');
+  const main = byId<HTMLElement>('main');
+  main.className = 'not-found-page';
+  main.innerHTML = '<p class="eyebrow">Error 404</p><h1>Page not found</h1><p>This address does not lead to a Pausekeeper page.</p><div><a class="button primary" href="/">Return to recorder</a><a class="button secondary" href="/demo">Open the sample</a></div>';
+  requestAnimationFrame(() => main.focus());
+}
+
+const pathname = location.pathname.replace(/\/$/, '') || '/';
+const query = new URLSearchParams(location.search);
+const isDemo = pathname === '/demo' || query.get('demo') === '1';
+if (pathname === '/privacy' || pathname === '/terms') renderLegalPage(pathname.slice(1) as 'privacy' | 'terms');
+else if (pathname !== '/' && pathname !== '/demo') renderNotFoundPage();
+else void startApp(isDemo);
+
+async function startApp(demoMode: boolean): Promise<void> {
+  const scope: StorageScope = demoMode ? 'demo' : 'real';
+  const licenseScope = demoMode ? 'demo' : 'real';
+  const storagePrefix = demoMode ? 'demo:pausekeeper' : 'pausekeeper';
+  const settingsKey = `${storagePrefix}:settings`;
+  const presetKey = `${storagePrefix}:custom-preset`;
+  if (demoMode) {
+    document.body.classList.add('in-demo');
+    setRouteMetadata('Demo — Pausekeeper', 'Try a sample recording with protected pauses. Sample changes never touch your real takes.', '/demo');
+  } else {
+    setRouteMetadata('Pausekeeper — Record speech with protected pauses', 'Record speech in your browser, keep natural pauses, and export WAV audio.', '/');
+  }
   const recordButton = byId<HTMLButtonElement>('record-button');
   const stopButton = byId<HTMLButtonElement>('stop-button');
   const recordState = byId<HTMLElement>('record-state');
@@ -78,15 +111,15 @@ async function startApp(): Promise<void> {
   let currentTake: Take | null = null;
   let previewUrl = '';
   let takes: Take[] = [];
-  let plusUnlocked = isOptimisticallyUnlocked();
+  let plusUnlocked = isOptimisticallyUnlocked(licenseScope);
 
-  const storedSettings = JSON.parse(localStorage.getItem('pausekeeper:settings') ?? '{}') as { minSilenceMs?: number; thresholdDb?: number };
+  const storedSettings = JSON.parse(localStorage.getItem(settingsKey) ?? '{}') as { minSilenceMs?: number; thresholdDb?: number };
   if (storedSettings.minSilenceMs) minInput.value = String(storedSettings.minSilenceMs);
   if (storedSettings.thresholdDb) sensitivityInput.value = String(storedSettings.thresholdDb);
 
   const announce = (text: string) => { srStatus.textContent = ''; requestAnimationFrame(() => { srStatus.textContent = text; }); };
   const durationOf = (segments: AudioSegment[]) => segments.reduce((sum, segment) => sum + (segment.restored ? segment.originalDuration : segment.outputDuration), 0);
-  const persistSettings = () => localStorage.setItem('pausekeeper:settings', JSON.stringify({ minSilenceMs: Number(minInput.value), thresholdDb: Number(sensitivityInput.value) }));
+  const persistSettings = () => localStorage.setItem(settingsKey, JSON.stringify({ minSilenceMs: Number(minInput.value), thresholdDb: Number(sensitivityInput.value) }));
   const sensitivityLabel = () => Number(sensitivityInput.value) <= -48 ? 'More sensitive' : Number(sensitivityInput.value) >= -34 ? 'Less sensitive' : 'Balanced';
   const updateSettingLabels = () => {
     minOutput.value = `${(Number(minInput.value) / 1000).toFixed(1)} seconds`;
@@ -202,12 +235,12 @@ async function startApp(): Promise<void> {
     const defaultName = `Take ${new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(now)}`;
     currentTake = { id: crypto.randomUUID(), name: defaultName, createdAt: now, duration: capturedPcm.length / sampleRate, editedDuration: durationOf(segments), sampleRate, minSilenceMs: Number(minInput.value), thresholdDb: Number(sensitivityInput.value), segments, rawBlob, editedBlob };
     currentReviewPcm = { takeId: currentTake.id, samples: capturedPcm };
-    await saveTake(currentTake);
-    takes = await listTakes();
+    await saveTake(currentTake, scope);
+    takes = await listTakes(scope);
     renderReview();
     renderTakes();
     recordState.textContent = 'Ready';
-    message.textContent = 'Take saved locally. Review each long pause below.';
+    message.textContent = demoMode ? 'Demo take saved in the sample area. Review each long pause below.' : 'Take saved locally. Review each long pause below.';
     message.classList.remove('error');
     announce('Recording stopped and saved. Review is ready.');
     review.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -217,7 +250,7 @@ async function startApp(): Promise<void> {
     if (!currentTake || currentReviewPcm?.takeId !== currentTake.id) return;
     currentTake.editedDuration = durationOf(currentTake.segments);
     currentTake.editedBlob = encodeWav(renderSegments(currentReviewPcm.samples, currentTake.sampleRate, currentTake.segments), currentTake.sampleRate);
-    await saveTake(currentTake);
+    await saveTake(currentTake, scope);
     takes = takes.map(take => take.id === currentTake?.id ? currentTake : take);
     renderReview();
     renderTakes();
@@ -297,7 +330,7 @@ async function startApp(): Promise<void> {
       const deleteButton = document.createElement('button'); deleteButton.className = 'button compact danger'; deleteButton.textContent = 'Delete';
       deleteButton.addEventListener('click', async () => {
         if (!confirm(`Delete “${take.name}” from this device? This cannot be undone unless you exported a project backup.`)) return;
-        await deleteTake(take.id);
+        await deleteTake(take.id, scope);
         takes = takes.filter(item => item.id !== take.id);
         if (currentTake?.id === take.id) { currentTake = null; currentReviewPcm = null; review.hidden = true; }
         renderTakes(); announce(`${take.name} deleted`);
@@ -316,11 +349,11 @@ async function startApp(): Promise<void> {
     if (!currentTake) return;
     currentTake.name = takeName.value.trim() || 'Untitled take';
     takeName.value = currentTake.name;
-    await saveTake(currentTake); renderTakes();
+    await saveTake(currentTake, scope); renderTakes();
   });
 
   const builtIns: Record<string, number> = { commentary: 500, narration: 800, lesson: 1300 };
-  const savedPreset = JSON.parse(localStorage.getItem('pausekeeper:custom-preset') ?? 'null') as { name: string; minSilenceMs: number; thresholdDb: number } | null;
+  const savedPreset = JSON.parse(localStorage.getItem(presetKey) ?? 'null') as { name: string; minSilenceMs: number; thresholdDb: number } | null;
   if (savedPreset) {
     const option = document.createElement('option'); option.value = 'custom'; option.textContent = `${savedPreset.name} · ${(savedPreset.minSilenceMs / 1000).toFixed(1)}s`; presetSelect.append(option);
   }
@@ -334,7 +367,7 @@ async function startApp(): Promise<void> {
     if (!plusUnlocked) { licenseState.textContent = 'Custom presets require Plus. Recording and WAV export remain free.'; location.hash = 'upgrade'; return; }
     const name = prompt('Name this project preset:', 'My voice setup')?.trim();
     if (!name) return;
-    localStorage.setItem('pausekeeper:custom-preset', JSON.stringify({ name, minSilenceMs: Number(minInput.value), thresholdDb: Number(sensitivityInput.value) }));
+    localStorage.setItem(presetKey, JSON.stringify({ name, minSilenceMs: Number(minInput.value), thresholdDb: Number(sensitivityInput.value) }));
     byId<HTMLElement>('preset-note').textContent = `Saved “${name}”. Reload to see it in the preset menu.`;
   });
 
@@ -355,8 +388,8 @@ async function startApp(): Promise<void> {
         announce('Project import cancelled; existing takes were not changed');
         return;
       }
-      await saveTakesAtomically(importedTakes);
-      takes = await listTakes(); renderTakes(); announce(`Imported ${importedTakes.length} takes`);
+      await saveTakesAtomically(importedTakes, scope);
+      takes = await listTakes(scope); renderTakes(); announce(`Imported ${importedTakes.length} takes`);
     } catch {
       alert('That file is not a valid Pausekeeper project backup. Your existing takes were not changed.');
     } finally { input.value = ''; }
@@ -368,14 +401,14 @@ async function startApp(): Promise<void> {
     licenseState.classList.toggle('unlocked', unlocked);
     byId<HTMLAnchorElement>('buy-link').hidden = unlocked;
   }
-  captureReturnedLicense();
+  captureReturnedLicense(licenseScope);
   applyLicenseUi(plusUnlocked, plusUnlocked ? 'Plus unlocked · checking license quietly' : 'Free edition');
-  void verifyStoredLicense().then(result => applyLicenseUi(result.unlocked, result.message));
+  void verifyStoredLicense(false, licenseScope).then(result => applyLicenseUi(result.unlocked, result.message));
   byId<HTMLButtonElement>('restore-license-open').addEventListener('click', () => licenseDialog.showModal());
   byId<HTMLButtonElement>('verify-license').addEventListener('click', async () => {
     const token = byId<HTMLInputElement>('license-input').value;
     licenseMessage.textContent = 'Checking this license…';
-    const result = await restoreLicense(token);
+    const result = await restoreLicense(token, licenseScope);
     licenseMessage.textContent = result.message;
     applyLicenseUi(result.unlocked, result.message);
     if (result.unlocked) window.setTimeout(() => licenseDialog.close(), 700);
@@ -388,8 +421,63 @@ async function startApp(): Promise<void> {
     licenseState.textContent = `Exported ${takes.length} WAV ${takes.length === 1 ? 'file' : 'files'} in one ZIP.`;
   });
 
-  try { takes = await listTakes(); renderTakes(); }
+  async function seedDemo(): Promise<void> {
+    await clearTakes('demo');
+    localStorage.removeItem(settingsKey);
+    localStorage.removeItem(presetKey);
+    const sample = createDemoTake();
+    await saveTake(sample, 'demo');
+    takes = await listTakes('demo');
+    currentTake = takes.find(take => take.id === sample.id) ?? sample;
+    const decoded = await decodeWav(currentTake.rawBlob);
+    currentReviewPcm = { takeId: currentTake.id, samples: decoded.pcm };
+    minInput.value = String(currentTake.minSilenceMs);
+    sensitivityInput.value = String(currentTake.thresholdDb);
+    updateSettingLabels();
+    renderReview();
+    renderTakes();
+    announce('Demo sample loaded. Review a held pause or export the sample WAV.');
+  }
+
+  if (demoMode) {
+    const banner = byId<HTMLElement>('demo-banner');
+    banner.hidden = false;
+    byId<HTMLButtonElement>('reset-demo').addEventListener('click', () => void seedDemo());
+    byId<HTMLAnchorElement>('start-real').addEventListener('click', event => {
+      event.preventDefault();
+      void clearTakes('demo').finally(() => {
+        localStorage.removeItem(settingsKey);
+        localStorage.removeItem(presetKey);
+        localStorage.removeItem('demo:sb_license:natural-pause-recorder');
+        localStorage.removeItem('demo:sb_license_verdict:natural-pause-recorder');
+        location.assign('/');
+      });
+    });
+  }
+
+  try {
+    takes = await listTakes(scope);
+    if (demoMode) {
+      if (!takes.some(take => take.id === 'demo-lesson-intro')) {
+        await seedDemo();
+      } else {
+        currentTake = takes.find(take => take.id === 'demo-lesson-intro') ?? takes[0] ?? null;
+        if (currentTake) {
+          const decoded = await decodeWav(currentTake.rawBlob);
+          currentReviewPcm = { takeId: currentTake.id, samples: decoded.pcm };
+          minInput.value = String(currentTake.minSilenceMs);
+          sensitivityInput.value = String(currentTake.thresholdDb);
+          updateSettingLabels();
+          renderReview();
+        }
+        renderTakes();
+        announce('Demo sample loaded. Review a held pause or export the sample WAV.');
+      }
+    } else renderTakes();
+  }
   catch { takesList.innerHTML = '<div class="empty-state"><h3>Local storage is unavailable</h3><p>Pausekeeper needs browser storage to keep takes between visits. Private browsing or device policy may be blocking it.</p></div>'; }
+
+  if (demoMode && location.hash === '#review') requestAnimationFrame(() => review.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('/sw.js').then(registration => {

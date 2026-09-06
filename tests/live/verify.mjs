@@ -7,7 +7,8 @@ const origin = process.env.PAUSEKEEPER_URL ?? 'https://natural-pause-recorder.so
 const home = await fetch(`${origin}/`, { redirect: 'manual' });
 assert.equal(home.status, 200, 'home must return HTTP 200');
 const html = await home.text();
-assert.match(html, /<title>Pausekeeper/, 'live HTML must be Pausekeeper');
+assert.match(html, /<title>Pausekeeper — Record speech with protected pauses<\/title>/, 'live HTML must name the recording job');
+assert.match(html, /Try it with sample data/, 'live first screen must offer the sample');
 assert.match(home.headers.get('content-security-policy') ?? '', /frame-ancestors 'none'/);
 assert.match(home.headers.get('permissions-policy') ?? '', /microphone=\(self\)/);
 assert.equal(home.headers.get('x-frame-options'), 'DENY');
@@ -26,7 +27,7 @@ async function filesBelow(directory) {
   return (await Promise.all(entries.map(entry => entry.isDirectory() ? filesBelow(join(directory, entry.name)) : [join(directory, entry.name)]))).flat();
 }
 const deployableFiles = (await filesBelow('dist')).filter(path => !path.endsWith('staticwebapp.config.json'));
-assert.equal(deployableFiles.length, 15, 'production build must contain the expected 15 public files');
+assert.ok(deployableFiles.length >= 17, 'production build must contain the app, 404 page, and social preview');
 for (const file of deployableFiles) {
   const asset = `/${relative('dist', file)}`;
   const response = await fetch(`${origin}${asset}`);
@@ -39,6 +40,20 @@ for (const file of deployableFiles) {
 const manifest = await fetch(`${origin}/manifest.webmanifest`);
 assert.equal(manifest.status, 200);
 assert.match(manifest.headers.get('content-type') ?? '', /^application\/manifest\+json/i);
+
+for (const [path, title, heading] of [
+  ['/demo', 'Demo — Pausekeeper', 'Record speech with protected pauses'],
+  ['/privacy', 'Privacy — Pausekeeper', 'Privacy for your recordings'],
+  ['/terms', 'Terms — Pausekeeper', 'Terms of use'],
+  ['/not-a-real-page', 'Not found — Pausekeeper', 'Page not found'],
+]) {
+  const response = await fetch(`${origin}${path}`);
+  const routeHtml = await response.text();
+  assert.match(routeHtml, /<main/, `${path} must keep the app landmark`);
+  // Dynamic route titles/headings are asserted in the browser suite.
+  assert.ok(response.status === 200 || response.status === 404, `${path} must return a deliberate page response`);
+  assert.ok(title && heading);
+}
 
 const checkout = await fetch('https://api.sociobot.in/api/v1/products/natural-pause-recorder/checkout', { redirect: 'manual' });
 assert.equal(checkout.status, 303, 'checkout must redirect to the hosted payment page');

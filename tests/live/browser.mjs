@@ -15,7 +15,9 @@ const page = await context.newPage();
 page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()); });
 page.on('pageerror', error => browserErrors.push(String(error)));
 page.on('request', request => {
-  const host = new URL(request.url()).hostname;
+  const url = new URL(request.url());
+  if (!['http:', 'https:'].includes(url.protocol)) return;
+  const host = url.hostname;
   if (host !== new URL(origin).hostname) unexpectedHosts.add(host);
 });
 
@@ -27,17 +29,18 @@ assert.equal(await page.locator('img:not([alt])').count(), 0);
 assert.equal(await page.locator('body').evaluate(element => getComputedStyle(element).fontSize), '16px');
 
 await page.keyboard.press('Tab');
-assert.equal(await page.getByRole('link', { name: 'Skip to recorder' }).evaluate(element => element === document.activeElement), true);
+assert.equal(await page.getByRole('link', { name: 'Skip to main content' }).evaluate(element => element === document.activeElement), true);
 await page.keyboard.press('Enter');
-assert.equal(await page.locator('#recorder').evaluate(element => element === document.activeElement), true);
+assert.equal(await page.locator('#main').evaluate(element => element === document.activeElement), true);
 const restoreLicense = page.getByRole('button', { name: 'Have a license? Restore it' });
 await restoreLicense.click();
 assert.equal(await page.getByRole('button', { name: 'Close license dialog' }).evaluate(element => element === document.activeElement), true);
 await page.keyboard.press('Escape');
 assert.equal(await restoreLicense.evaluate(element => element === document.activeElement), true);
 
-for (const path of ['/', '/privacy', '/terms']) {
+for (const path of ['/', '/demo', '/privacy', '/terms', '/not-a-real-page']) {
   await page.goto(`${origin}${path}`, { waitUntil: 'networkidle' });
+  if (path === '/demo') await page.getByRole('heading', { name: 'Review protected pauses' }).waitFor();
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   assert.deepEqual(results.violations.filter(violation => ['serious', 'critical'].includes(violation.impact ?? '')), [], `${path} has serious or critical axe findings`);
 }
@@ -77,7 +80,7 @@ await offlinePage.goto(origin);
 await offlinePage.waitForFunction(() => navigator.serviceWorker?.controller !== null, null, { timeout: 10_000 });
 await offline.setOffline(true);
 await offlinePage.reload();
-assert.match(await offlinePage.locator('h1').innerText(), /Keep the pauses/);
+assert.match(await offlinePage.locator('h1').innerText(), /Record speech with protected pauses/);
 await offlinePage.goto(`${origin}/privacy`);
 assert.match(await offlinePage.locator('h1').innerText(), /Privacy/);
 await offline.close();

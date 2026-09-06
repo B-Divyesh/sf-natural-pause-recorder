@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:claims": "playwright test tests/e2e/claims.spec.ts --workers=1",
     "test:live": "node tests/live/verify.mjs",
     "test:live:browser": "node tests/live/browser.mjs",
     "test:pwa:update": "node tests/e2e/service-worker-update.mjs"
@@ -16,6 +17,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
     "@playwright/test": "1.58.2",
+    "@types/node": "^22.15.3",
     "typescript": "5.9.2",
     "vite": "^7.3.6",
     "vitest": "^3.2.7"

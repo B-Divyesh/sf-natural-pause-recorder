@@ -8,11 +8,12 @@ test('has a clear, keyboard-reachable recorder', async ({ page }) => {
   await expect(page).toHaveTitle(/Pausekeeper/);
   await expect(page.locator('h1')).toHaveCount(1);
   await expect(page.locator('main')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Try it with sample data' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start recording' })).toBeVisible();
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('link', { name: 'Skip to recorder' })).toBeFocused();
+  await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.locator('#recorder')).toBeFocused();
+  await expect(page.locator('#main')).toBeFocused();
   const restoreLicense = page.getByRole('button', { name: 'Have a license? Restore it' });
   await restoreLicense.click();
   await expect(page.getByRole('button', { name: 'Close license dialog' })).toBeFocused();
@@ -61,7 +62,7 @@ test('app shell and legal pages work offline after first load', async ({ page, c
   await page.waitForFunction(() => navigator.serviceWorker?.controller !== null, null, { timeout: 10_000 });
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Keep the pauses');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Record speech with protected pauses');
   await page.goto('/privacy');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Privacy');
 });
@@ -83,7 +84,7 @@ test('records, reviews, restores and exports a take locally', async ({ page, con
   await expect(page.getByText('Recording', { exact: true })).toBeVisible();
   await page.waitForTimeout(2200);
   await page.getByRole('button', { name: 'Stop & review' }).click();
-  await expect(page.getByRole('heading', { name: 'Shape the quiet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Review protected pauses' })).toBeVisible();
   await page.getByRole('button', { name: /Restore .* pause/ }).click();
   await expect(page.getByText(/Restored the full/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Export WAV' }).first()).toBeVisible();
@@ -285,6 +286,7 @@ test('deployment policy declares security, immutable assets, and manifest MIME',
     routes: Array<{ route: string; headers: Record<string, string> }>;
     globalHeaders: Record<string, string>;
     mimeTypes: Record<string, string>;
+    responseOverrides: Record<string, { rewrite: string; statusCode: number }>;
   };
   expect(config.routes).toContainEqual(expect.objectContaining({ route: '/assets/*.{js,css}', headers: expect.objectContaining({ 'Cache-Control': expect.stringContaining('immutable') }) }));
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
@@ -292,6 +294,7 @@ test('deployment policy declares security, immutable assets, and manifest MIME',
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
   expect(config.globalHeaders['Strict-Transport-Security']).toContain('max-age=31536000');
   expect(config.mimeTypes['.webmanifest']).toBe('application/manifest+json');
+  expect(config.responseOverrides['404']).toEqual({ rewrite: '/404.html', statusCode: 404 });
 });
 
 test('Plus purchase uses the registered Sociobot checkout contract', async ({ page }) => {
@@ -322,12 +325,27 @@ test('returned, restored, cached, and revoked licenses follow the Plus policy', 
   await expect(page.locator('#license-message')).toHaveText('Paste a license token first.');
 });
 
-test('home and legal pages have no serious or critical automated accessibility violations', async ({ page }) => {
-  for (const path of ['/', '/privacy', '/terms']) {
+test('app, demo, legal, and not-found pages have no serious or critical automated accessibility violations', async ({ page }) => {
+  for (const path of ['/', '/demo', '/privacy', '/terms', '/not-a-real-page', '/404.html']) {
     await page.goto(path);
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('main')).toHaveCount(1);
     const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations.filter(violation => ['serious', 'critical'].includes(violation.impact ?? '')), path).toEqual([]);
   }
+});
+
+test('unknown routes show the designed not-found page with a way home', async ({ page }) => {
+  await page.goto('/not-a-real-page');
+  await expect(page).toHaveTitle('Not found — Pausekeeper');
+  await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Return to recorder' })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: 'Open the sample' })).toHaveAttribute('href', '/demo');
+});
+
+test('the static host 404 document has its own title and return actions', async ({ page }) => {
+  await page.goto('/404.html');
+  await expect(page).toHaveTitle('Not found — Pausekeeper');
+  await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Return to recorder' })).toBeVisible();
 });

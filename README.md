@@ -1,33 +1,45 @@
-# Pausekeeper
+# Pausekeeper — Record speech with protected pauses
 
-Pausekeeper is an offline-capable, local-first speech recorder for solo narrators, game-stream commentators, and language teachers. It records continuously, finds sustained quiet sections, protects a configurable minimum pause, and lets you restore any compacted pause before exporting a standard mono WAV.
+Pausekeeper is for narrators, stream commentators, and language teachers. Record speech in the browser, keep natural pauses, and export WAV audio.
 
-Live product: <https://natural-pause-recorder.sociobot.in>
+Live site: <https://natural-pause-recorder.sociobot.in>
+
+One-click sample: <https://natural-pause-recorder.sociobot.in/demo>
+
+## Start with the sample
+
+Open `/demo` or choose **Try it with sample data** on the first screen. It opens a lesson-intro take with voice and pause sections already shown. Restore a long pause, export the WAV, or reset the sample.
+
+The demo uses the separate `demo:pausekeeper` IndexedDB database and `demo:` local-storage keys. It never reads or writes real takes. **Start for real** clears the demo records before returning home.
 
 ## What it does
 
-- Captures microphone PCM entirely in the browser; no audio upload or account.
-- Shows a live level tape and a post-record voice/pause timeline.
-- Compacts only silence longer than the selected 0.3–2.5 second minimum.
-- Restores individual pauses non-destructively and previews the edited WAV.
-- Persists raw and edited takes in IndexedDB across refreshes.
-- Exports individual WAVs and a portable JSON project backup for free.
-- Validates an entire project backup before one atomic IndexedDB import; ID collisions require explicit replacement confirmation.
-- Installs as a PWA and keeps the app shell available offline.
-- Offers an optional one-time Plus license for custom presets and batch ZIP export through the Sociobot billing API.
+- Records microphone audio in the browser.
+- Keeps pauses shorter than the selected 0.3–2.5 second minimum.
+- Restores a full held pause before WAV export.
+- Keeps saved takes after refresh in browser storage.
+- Exports free WAV files and portable project backups.
+- Rejects an invalid project import without changing saved takes.
+- Works offline after the first visit.
 
-Pausekeeper uses a loudness threshold; it does not transcribe speech, isolate or identify a person, remove noise, or provide clinical voice analysis.
+Audio stays in this browser during normal recording. Pausekeeper uses loudness to mark quiet sections. It does not create transcripts, identify people, or remove background noise.
 
-## Develop
+## Plus
 
-Requires Node.js 20 or newer.
+Pausekeeper Plus is a one-time $12 convenience unlock. It adds custom project presets and batch ZIP export. Recording, individual WAV export, project backup, privacy, and accessibility stay free.
+
+Checkout and refunds are handled by Sociobot/Dodo. A returned license is stored in local storage and checked at most once per day. The app never sends audio to the license service.
+
+## Run locally
+
+Requires Node.js 20 or newer and the Playwright Chromium browser used by the pinned Playwright 1.58.2 package.
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
-Open the printed local URL. Microphone capture requires `localhost` or HTTPS.
+Open the printed local URL. Microphone capture needs `localhost` or HTTPS.
 
 ## Verify
 
@@ -35,29 +47,33 @@ Open the printed local URL. Microphone capture requires `localhost` or HTTPS.
 npm test
 npm run build
 npm run test:e2e
+npm run test:claims
 npm run test:pwa:update
+```
+
+Every visitor-facing claim is listed in [`.factory/claims.json`](./.factory/claims.json). `npm run test:claims` runs each tagged claim test from `/demo`; each registry entry also gives the exact single-claim command.
+
+After deployment, run:
+
+```sh
 npm run test:live
 npm run test:live:browser
 ```
 
-`npm run build` is the reproducible deployment command. It writes the static site to `./dist`, with `dist/index.html` at the deploy root. Playwright 1.58.2 is pinned; its Chromium browser must be installed or available through `PLAYWRIGHT_BROWSERS_PATH`.
-
-The browser suite uses a generated deterministic microphone WAV and checks semantic structure, skip navigation, dialog focus, focus contrast, 44 px link targets, 390 px overflow, record/review/restore/export persistence, rejected-capture isolation, project round trips, malformed-import rollback, axe WCAG A/AA findings on all routes, and explicit offline navigation. Run `npm run test:live` after deployment to prove artifact identity, response policy, immutable caching, manifest MIME, hosted checkout availability, and license-verification policy.
+`npm run build` runs strict TypeScript checks and writes the static deployment to `./dist`, with `dist/index.html` at its root. Browser checks use a deterministic microphone file and cover normal recording, recovery, keyboard use, responsive layout, legal routes, PWA updates, accessibility, privacy, and offline reload.
 
 ## Privacy and storage
 
-Audio, names, settings, and pause decisions stay on the current device. Recordings live in IndexedDB; small preferences and an optional license token live in local storage. The only API request is an optional daily Sociobot license verification. See [`/privacy`](https://natural-pause-recorder.sociobot.in/privacy) and [`/terms`](https://natural-pause-recorder.sociobot.in/terms).
+Real recordings and pause decisions are stored in the current browser’s IndexedDB database. Settings and an optional license token use local storage. The free recorder makes no external request. The optional license check sends only its license token to Sociobot.
 
-## Browser notes
+Read the live [privacy page](https://natural-pause-recorder.sociobot.in/privacy) and [terms](https://natural-pause-recorder.sociobot.in/terms).
 
-Pausekeeper targets current evergreen browsers with `getUserMedia`, Web Audio, IndexedDB, and service worker support. Keep independent project backups of important material because browsers and operating systems can clear site storage. WAV is mono 16-bit PCM at the capture device’s native sample rate.
+## Deploy
 
-## Deployment
+Deploy `dist/` as a static site. `public/staticwebapp.config.json` supplies the security headers, immutable asset caching, manifest MIME type, SPA fallback, and designed 404 response. The service worker precaches the shell and the `/demo` route for offline use.
 
-Deploy the contents of `dist/` as a static site with SPA navigation falling back to `index.html` for `/privacy` and `/terms`. The factory owns DNS, infrastructure, and release-time billing registration; this repository does not contain product IDs or secrets.
-
-`public/staticwebapp.config.json` carries the Azure Static Web Apps response policy: restrictive microphone-aware CSP and Permissions-Policy, frame/origin isolation, one-year HSTS, the manifest MIME override, and immutable caching for Vite's content-hashed JS/CSS.
+The factory owns DNS, infrastructure, and billing registration. This repository has no deployment or payment credentials.
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+[MIT](./LICENSE)

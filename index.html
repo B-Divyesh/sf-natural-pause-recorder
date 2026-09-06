@@ -4,31 +4,48 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#30352f" />
-    <meta name="description" content="Record speech locally, protect natural pauses, and export clean WAV audio." />
+    <meta name="description" content="Record speech in your browser, keep natural pauses, and export WAV audio." />
+    <link rel="canonical" href="https://natural-pause-recorder.sociobot.in/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Pausekeeper — Record speech with protected pauses" />
+    <meta property="og:description" content="Record speech in your browser, keep natural pauses, and export WAV audio." />
+    <meta property="og:image" content="https://natural-pause-recorder.sociobot.in/assets/pausekeeper-social.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Pausekeeper — Record speech with protected pauses" />
+    <meta name="twitter:description" content="Record speech in your browser, keep natural pauses, and export WAV audio." />
+    <meta name="twitter:image" content="https://natural-pause-recorder.sociobot.in/assets/pausekeeper-social.jpg" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon-192.png" />
-    <title>Pausekeeper — Keep the pauses that sound human</title>
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <title>Pausekeeper — Record speech with protected pauses</title>
   </head>
   <body>
-    <a class="skip-link" href="#recorder">Skip to recorder</a>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
       <a class="brand" href="/" aria-label="Pausekeeper home">
         <svg aria-hidden="true" viewBox="0 0 52 38"><circle cx="15" cy="15" r="10"/><circle cx="37" cy="15" r="10"/><path d="M15 15c4 20 18 20 22 0"/></svg>
         <span>Pausekeeper</span>
       </a>
       <nav aria-label="Main navigation">
-        <a href="#recorder">Recorder</a><a href="#takes">Takes</a><a href="#upgrade">Plus</a>
+        <a href="/demo">Demo</a><a href="/#recorder">Recorder</a><a href="/#takes">Takes</a><a href="/privacy">Privacy</a>
       </nav>
       <span id="network-badge" class="network-badge" role="status">Online</span>
     </header>
+    <aside id="demo-banner" class="demo-banner" aria-label="Demo controls" hidden>
+      <strong>Demo — sample data, nothing is saved to your real takes.</strong>
+      <span>Review the lesson intro, restore a pause, or export the sample.</span>
+      <div><button id="reset-demo" class="button compact" type="button">Reset demo</button><a id="start-real" class="button compact" href="/">Start for real</a></div>
+    </aside>
 
-    <main id="main">
+    <main id="main" tabindex="-1">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow">Local speech recorder · no account</p>
-          <h1 id="hero-title">Keep the pauses that sound human.</h1>
-          <p class="hero-lede">Record hands-free, shorten only the long empty stretches, and restore any pause before you export. Your microphone audio never leaves this device.</p>
-          <a class="button primary hero-cta" href="#recorder">Open the recorder <span aria-hidden="true">↓</span></a>
+          <p class="eyebrow">Local speech recorder</p>
+          <h1 id="hero-title">Record speech with protected pauses</h1>
+          <p class="hero-lede">For narrators, stream commentators, and language teachers who need natural pauses in every recording.</p>
+          <div class="hero-actions"><a class="button primary hero-cta" href="/demo#review">Try it with sample data</a><a class="button secondary hero-cta" href="#recorder">Record with microphone</a></div>
+          <p class="action-note">The sample opens a populated take you can review and export.</p>
+          <ul class="hero-facts" aria-label="Pausekeeper facts"><li>Audio stays in this browser.</li><li>Works offline after the first visit.</li><li>Free recording and WAV export.</li></ul>
         </div>
         <figure class="hero-visual">
           <picture>
@@ -36,14 +53,19 @@
             <source srcset="/assets/hero-recorder-720.webp 720w, /assets/hero-recorder.webp 1200w" sizes="(max-width: 850px) calc(100vw - 2rem), 52vw" type="image/webp" />
             <img src="/assets/hero-recorder.jpg" width="1200" height="800" fetchpriority="high" decoding="async" alt="A fictional cream and walnut reel-to-reel recorder carrying a continuous green waveform tape" />
           </picture>
-          <figcaption>Continuous capture. Deliberate edits.</figcaption>
+          <figcaption>Fictional field recorder illustration.</figcaption>
         </figure>
+      </section>
+
+      <section class="how-it-works" aria-labelledby="how-title">
+        <div class="section-heading"><p class="eyebrow">How it works</p><h2 id="how-title">Protect pauses in three steps</h2></div>
+        <ol class="steps-list"><li><strong>Set a minimum pause.</strong><span>Choose 0.3 to 2.5 seconds.</span></li><li><strong>Record or open the sample.</strong><span>Pausekeeper marks voice and quiet sections.</span></li><li><strong>Restore and export.</strong><span>Bring back a held pause, then export WAV.</span></li></ol>
       </section>
 
       <section id="recorder" class="workbench" aria-labelledby="recorder-title" tabindex="-1">
         <div class="section-heading">
-          <p class="eyebrow">The workbench</p>
-          <h2 id="recorder-title">One take, kept whole</h2>
+          <p class="eyebrow">Recorder</p>
+          <h2 id="recorder-title">Record and protect pauses</h2>
           <p>Choose the shortest pause that should survive. Longer quiet sections are compacted to that length—not deleted.</p>
         </div>
 
@@ -56,7 +78,7 @@
             </div>
             <div class="meter" aria-hidden="true"><span class="meter-arc"></span><span id="meter-needle" class="meter-needle"></span><span class="meter-low">quiet</span><span class="meter-high">voice</span></div>
             <div id="live-timeline" class="timeline empty" role="img" aria-label="No audio recorded yet">
-              <div class="empty-tape"><span aria-hidden="true">〰</span><strong>Your tape is empty</strong><small>Press Record and speak naturally.</small></div>
+              <div class="empty-tape"><span aria-hidden="true">〰</span><strong>No recording yet</strong><small>Start recording and speak naturally.</small></div>
             </div>
             <div class="transport">
               <button id="record-button" class="button record" type="button"><span aria-hidden="true" class="record-dot"></span><span>Start recording</span></button>
@@ -81,7 +103,7 @@
       </section>
 
       <section id="review" class="review-section" aria-labelledby="review-title" hidden>
-        <div class="section-heading"><p class="eyebrow">Non-destructive review</p><h2 id="review-title">Shape the quiet</h2><p id="review-summary"></p></div>
+        <div class="section-heading"><p class="eyebrow">Pause review</p><h2 id="review-title">Review protected pauses</h2><p id="review-summary"></p></div>
         <div id="review-timeline" class="review-timeline" aria-label="Detected speech and pause segments"></div>
         <div class="review-controls">
           <audio id="preview-audio" controls preload="metadata"></audio>
@@ -96,13 +118,17 @@
         <div id="takes-list" class="takes-list"><div class="empty-state"><span aria-hidden="true">◇</span><h3>No saved takes yet</h3><p>Your finished recordings will wait here, even after a refresh.</p></div></div>
       </section>
 
+      <section class="privacy-section" aria-labelledby="privacy-title">
+        <div class="section-heading"><p class="eyebrow">Privacy and limits</p><h2 id="privacy-title">What Pausekeeper does not do</h2><p>Your audio stays in this browser. Pausekeeper finds quiet sections by loudness. It does not make a transcript, identify a person, or remove background noise.</p><a class="text-link" href="/privacy">Read the privacy page</a></div>
+      </section>
+
       <section id="upgrade" class="upgrade-section" aria-labelledby="upgrade-title">
-        <div><p class="eyebrow">Optional convenience</p><h2 id="upgrade-title">Pausekeeper Plus</h2><p>One-time $12 purchase. Save custom project presets and export every take as one ZIP. Recording, pause restoration, WAV export, accessibility, and project backup stay free.</p><p id="license-state" class="license-state">Free edition</p></div>
+        <div><p class="eyebrow">Paid features</p><h2 id="upgrade-title">Pausekeeper Plus</h2><p>One-time $12 purchase. Save custom project presets and export every take as one ZIP. Recording, pause restoration, WAV export, accessibility, and project backup stay free.</p><p id="license-state" class="license-state">Free edition</p></div>
         <div class="upgrade-actions"><a id="buy-link" class="button primary" href="https://api.sociobot.in/api/v1/products/natural-pause-recorder/checkout">Buy Plus — $12 once</a><button id="batch-export" class="button secondary" type="button">Export all WAVs</button><button id="restore-license-open" class="text-button" type="button">Have a license? Restore it</button></div>
       </section>
     </main>
 
-    <footer><div><strong>Pausekeeper</strong><p>Made for the breath between sentences. Audio stays local.</p></div><nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="https://github.com/B-Divyesh/sf-natural-pause-recorder">Source</a></nav><small>Hero imagery is original and AI-generated for this product.</small></footer>
+    <footer><div><strong>Pausekeeper</strong><p>Local recording and pause editing for spoken audio.</p></div><nav aria-label="Footer navigation"><a href="/demo">Demo</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="https://github.com/B-Divyesh/sf-natural-pause-recorder" target="_blank" rel="noreferrer">Source <span class="sr-only">(opens in a new tab)</span></a></nav><small>Built by Param Factory · build <span id="build-id">1.1.0</span> · Hero imagery is original and AI-generated for this product.</small></footer>
 
     <dialog id="license-dialog" aria-labelledby="license-dialog-title"><form method="dialog"><button class="dialog-close" value="cancel" aria-label="Close license dialog">×</button><p class="eyebrow">Restore purchase</p><h2 id="license-dialog-title">Use your Plus license</h2><label for="license-input">License token</label><input id="license-input" autocomplete="off" spellcheck="false" /><p id="license-message" class="message" aria-live="assertive">Paste the token from your purchase email.</p><div class="dialog-actions"><button id="verify-license" class="button primary" type="button">Verify license</button><button class="button secondary" value="cancel">Cancel</button></div></form></dialog>
     <div id="update-toast" class="toast" role="status" hidden><span>A fresh version is ready.</span><button id="apply-update" class="button compact">Update now</button></div>

@@ -9,7 +9,7 @@ const root = await mkdtemp(join(tmpdir(), 'pausekeeper-update-'));
 await cp('dist', root, { recursive: true });
 const workerPath = join(root, 'sw.js');
 const worker = await readFile(workerPath, 'utf8');
-await writeFile(workerPath, worker.replace('pausekeeper-shell-v5', 'pausekeeper-update-a'));
+await writeFile(workerPath, worker.replace('pausekeeper-shell-v8', 'pausekeeper-update-a'));
 
 const contentTypes = new Map([
   ['.avif', 'image/avif'], ['.css', 'text/css'], ['.html', 'text/html'], ['.js', 'text/javascript'],
@@ -42,7 +42,7 @@ try {
   await page.goto(origin);
   await page.waitForFunction(() => navigator.serviceWorker?.controller !== null, null, { timeout: 10_000 });
 
-  await writeFile(workerPath, worker.replace('pausekeeper-shell-v5', 'pausekeeper-update-b'));
+  await writeFile(workerPath, worker.replace('pausekeeper-shell-v8', 'pausekeeper-update-b'));
   await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update(); });
   await page.getByText('A fresh version is ready').waitFor({ state: 'visible', timeout: 10_000 });
   await page.getByRole('button', { name: 'Update now' }).click();

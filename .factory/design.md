@@ -50,3 +50,5 @@ Hero asset: a generated still life of a fictional, unbranded mid-century tableto
 Prompt sheet: “Editorial product still life of an entirely fictional unbranded 1950s field audio recorder, warm oatmeal enamel case, dark walnut faceplate, coral red record lamp, sage green waveform tape gently looping through brass guides, calm studio desk, tactile paper grain, soft directional morning light, three-quarter lens, restrained mid-century scientific illustration realism, palette of warm cream, charcoal, muted sage, burnt coral and ochre, spacious composition, no people, no text, no letters, no numbers, no watermark, no logos, no recognizable brand, no modern screens, no cables cut off awkwardly.”
 
 Generated with the factory Azure image model (`factory-image`) on 2026-08-28. Original prompt and generation metadata are stored beside the source in `assets/src/hero-recorder.json`. The shipped derivative is WebP, optimized below 300 KB. Generated imagery is disclosed in the footer.
+
+The social preview `public/assets/pausekeeper-social.jpg` is a 1200×630 center crop of the same original generated hero. It has no added text and uses the same provenance and disclosure.
