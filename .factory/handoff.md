@@ -1,5 +1,15 @@
 # Pausekeeper handoff
 
+## Verification 6 follow-up
+
+Independent verification of implementation `97780aedb84c6d2aa4885a3fc485efba92b32534` and documentation `d91a140bdc332d55cbb108905bd54ba84afa00a2` completed on 2026-09-06. **Verdict: FAIL — 2 untested public claims.** No product code was changed.
+
+- Clean checkout passed 9/9 unit tests, build, 28/28 E2E tests, 15/15 aggregate claim tests, all 15 individual declared claim commands, and the PWA update test.
+- Live identity/browser checks, fresh desktop and phone first screens, demo isolation/reset/start-real behavior, offline/PWA, keyboard/focus, reduced motion, axe serious/critical scans, legal routes, designed 404, privacy requests, and internal links passed. The live artifact matched `97780ae`.
+- The two blocking contract gaps are: no tagged claim test proves the public Plus promise for valid-license custom presets and successful batch ZIP export; and no tagged claim test proves the documented Start for real demo-data discard. Manual checks show both behaviors work, but they do not satisfy the claim contract.
+
+See `.factory/verification-6.md` for evidence and required repairs. Do not call this handoff accepted until those two claim entries and one-to-one tagged sandbox tests are added and independently rerun.
+
 ## Status
 
 Repair work order `natural-pause-recorder-repair-3` is complete. The deployed implementation is `97780aedb84c6d2aa4885a3fc485efba92b32534` (`fix: open demo at populated review`), following the substantive repair in `89df2fd40437676144cf0608d71c0003e0822216`. The HTTPS product is <https://natural-pause-recorder.sociobot.in>.
