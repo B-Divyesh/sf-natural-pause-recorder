@@ -2,7 +2,7 @@
 
 ## Entry point
 
-Open <https://natural-pause-recorder.sociobot.in/demo> or use `?demo=1`. The landing-page action opens `/demo#review` so the first view after clicking is the populated review.
+Open <https://natural-pause-recorder.sociobot.in/demo> or use `?demo=1`. Demo opens at the populated review, so the first view is the sample in use.
 
 ## Sample
 

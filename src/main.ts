@@ -477,7 +477,7 @@ async function startApp(demoMode: boolean): Promise<void> {
   }
   catch { takesList.innerHTML = '<div class="empty-state"><h3>Local storage is unavailable</h3><p>Pausekeeper needs browser storage to keep takes between visits. Private browsing or device policy may be blocking it.</p></div>'; }
 
-  if (demoMode && location.hash === '#review') requestAnimationFrame(() => review.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
+  if (demoMode) requestAnimationFrame(() => review.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('/sw.js').then(registration => {
